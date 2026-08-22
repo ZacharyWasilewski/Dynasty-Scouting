@@ -1,0 +1,634 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * DYNASTY DATABASE COLOR SYSTEM — light-primary, with dark used as
+ * strategic emphasis on specific sections, not as the site's default
+ * canvas. This is a genuine, deliberate art-direction decision, not
+ * an inversion of the old dark palette — see the specific values
+ * below, none of which are simply the old dark values flipped.
+ *
+ * Every existing component already uses semantic class names
+ * (bg-void, text-ink, border-border, etc.) rather than hardcoded
+ * colors, which is what makes this actually work: flip the variable
+ * VALUES here, and every component that was already built correctly
+ * inherits the new palette automatically. Nothing about what a class
+ * like `bg-surface` MEANS has changed — only what color it resolves
+ * to.
+ *
+ * .theme-dark is a scoped override, meant to wrap specific sections
+ * (the Model, a major DD Score moment, Mock Draft, etc.) that should
+ * render in the original dark palette as a deliberate contrast beat,
+ * not as the page default. Everything within a .theme-dark wrapper
+ * uses the exact same semantic classes — bg-void inside .theme-dark
+ * still means "primary background," it just resolves to near-black
+ * instead of off-white there.
+ */
+:root {
+  /* Base surfaces — a cool, slightly gray off-white as the page
+     canvas (never pure #FFFFFF, per the brief's own explicit
+     direction), with true white reserved for cards/content that
+     needs to visibly lift off that canvas. */
+  --color-void: #F6F7F9;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #EEF0F3;
+  --color-border: #E3E5E9;
+  --color-border-strong: #CBCFD6;
+
+  /* Text — charcoal rather than pure black (per the brief's own
+     "charcoal / near-black" language), softening slightly at each
+     step down rather than jumping straight to a washed-out gray. */
+  --color-ink: #14161B;
+  --color-ink-secondary: #565D6B;
+  --color-ink-tertiary: #838B99;
+
+  /* Accent blue — a deeper, more saturated blue than the dark
+     theme's version specifically because this one has to work as
+     readable TEXT on a light background, not just as a glowing UI
+     highlight against black. This exact value is a well-established,
+     accessible "royal blue" (matches Tailwind's own blue-600) rather
+     than a guess. */
+  --color-accent: #2563EB;
+  --color-accent-dim: #1E40AF;
+  --color-accent-soft: #93C5FD;
+
+  --color-riser: #16A34A;
+  --color-faller: #DC2626;
+}
+
+.theme-dark {
+  /* Exactly the original dark palette, unchanged — this is what
+     "preserve the DNA" means for the sections that keep it. */
+  --color-void: #0A0C0F;
+  --color-surface: #12151A;
+  --color-surface-raised: #181C22;
+  --color-border: #232830;
+  --color-border-strong: #2E343E;
+
+  --color-ink: #EDEFF2;
+  --color-ink-secondary: #9BA3AF;
+  --color-ink-tertiary: #5C6470;
+
+  --color-accent: #3B82F6;
+  --color-accent-dim: #1E40AF;
+  --color-accent-soft: #93C5FD;
+
+  --color-riser: #4ADE80;
+  --color-faller: #F87171;
+
+  /* Scoped dark sections need their own native-UI hints too — a
+     light-themed browser scrollbar/selection color would look wrong
+     floating inside a section that's otherwise fully dark. */
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    /* Safety net against any element (a wide table, a fixed-width
+       chart, etc.) accidentally causing the whole page to scroll
+       sideways on mobile — doesn't affect any component's own
+       intentional overflow-x-auto scroll container, since those are
+       separate scroll contexts. */
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: rgba(37, 99, 235, 0.18);
+  }
+
+  /* Visible keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Tabular numerals wherever mono/data type is used */
+  .font-mono {
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 2px solid var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-tertiary);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Entrance animation for hero/section content */
+  .animate-fade-in-up {
+    animation: fadeInUp 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade-in {
+    animation: fadeIn 400ms ease-out both;
+  }
+  .animate-slide-up {
+    animation: slideUp 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Skeleton shimmer for loading states — uses the theme variables
+     (not hardcoded dark values, which would render as dark bars on
+     the new light-default background and look broken) so this
+     correctly adapts within a .theme-dark scoped section too. */
+  .animate-shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-surface-raised) 40%,
+      var(--color-surface) 50%,
+      var(--color-surface-raised) 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .mock-board-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  /* Desktop: keep the full four-round board compact to its actual grid height
+     so the user's selected-player list sits immediately underneath it. */
+  @media (min-width: 768px) {
+    .mock-draft-board-panel {
+      height: auto;
+      align-self: start;
+    }
+
+    .mock-board-scroll {
+      flex: 0 0 auto;
+      height: auto;
+      max-height: none;
+      overflow-y: visible;
+    }
+
+    .mock-board-scroll > div {
+      min-height: 0;
+    }
+  }
+
+  .mock-board-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .mock-board-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mock-board-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border: 0;
+  }
+}
+
+
+/* Full-screen mobile mock-draft app behavior.  The page owns the viewport;
+   only the player list and the board's internal horizontal area can scroll. */
+@media (max-width: 767px) {
+  html:has(.mock-draft-shell),
+  body:has(.mock-draft-shell) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+
+  body:has(.mock-draft-shell) > header {
+    width: 100vw;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  body:has(.mock-draft-shell) .mock-draft-page {
+    width: 100%;
+    max-width: 100vw;
+    height: calc(100dvh - 4rem);
+    min-height: calc(100dvh - 4rem);
+    overflow: hidden;
+  }
+
+  .mock-draft-shell {
+    width: 100%;
+    max-width: 100%;
+    height: calc(100dvh - 4rem);
+    min-height: 0;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mock-draft-toolbar {
+    flex: 0 0 52px;
+    min-height: 52px;
+    margin: 0 !important;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    padding: 8px 12px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .mock-draft-toolbar > div:first-child {
+    min-width: 0;
+  }
+
+  .mock-draft-toolbar h2 {
+    font-size: 12px;
+  }
+
+  .mock-draft-toolbar p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mock-draft-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    display: flex !important;
+    flex-direction: column;
+    gap: 0 !important;
+    overflow: hidden;
+  }
+
+  .mock-draft-board-panel {
+    flex: 0 0 46%;
+    min-height: 0;
+    height: 46%;
+    display: flex;
+    flex-direction: column;
+    border-left: 0;
+    border-right: 0;
+    overflow: hidden;
+  }
+
+  .mock-draft-board-panel > .flex {
+    flex: 0 0 42px;
+    min-height: 42px;
+    padding: 7px 12px !important;
+  }
+
+  .mock-draft-board-panel > .flex p:first-child {
+    display: none;
+  }
+
+  .mock-draft-board-panel > .flex .mock-draft-pick-label {
+    display: block !important;
+    margin-top: 0 !important;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .mock-board-scroll {
+    flex: 1 1 auto;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-x;
+  }
+
+  .mock-board-scroll > div {
+    min-height: 100%;
+    padding: 4px !important;
+  }
+
+  .mock-board-scroll button {
+    min-height: 58px !important;
+    padding: 5px !important;
+  }
+
+  .mock-board-scroll button p {
+    font-size: 9px;
+  }
+
+  .mock-board-scroll button .pt-4 {
+    padding-top: 12px;
+  }
+
+  .mock-board-scroll button img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .mock-your-picks {
+    display: none;
+  }
+
+  .mock-player-panel {
+    flex: 1 1 54%;
+    min-height: 0;
+    height: 54%;
+    display: flex;
+    flex-direction: column;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    overflow: hidden;
+  }
+
+  .mock-player-panel > .flex:first-child {
+    flex: 0 0 40px;
+    min-height: 40px;
+    padding: 6px 12px !important;
+  }
+
+  .mock-player-panel > .flex:first-child p:first-child {
+    display: none;
+  }
+
+  .mock-player-panel > .flex:first-child p.mt-1 {
+    margin-top: 0 !important;
+    font-size: 12px;
+  }
+
+  .mock-player-panel > .border-b.p-3 {
+    flex: 0 0 82px;
+    padding: 7px 10px !important;
+  }
+
+  .mock-player-panel > .border-b.p-3 > div:first-child {
+    height: 34px;
+  }
+
+  .mock-player-panel > .border-b.p-3 input {
+    font-size: 13px;
+  }
+
+  .mock-player-panel > .border-b.p-3 .mt-2 {
+    margin-top: 6px !important;
+  }
+
+  .mock-player-list {
+    flex: 1 1 auto;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    padding-bottom: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .mock-player-list > div > div {
+    padding-top: 9px !important;
+    padding-bottom: 9px !important;
+  }
+
+  .mock-player-list .mock-community-rank {
+    display: block !important;
+  }
+
+  .mock-player-list button {
+    min-height: 36px;
+  }
+
+  .mock-player-list .text-sm {
+    font-size: 13px;
+  }
+
+  .mock-player-list .text-\[10px\] {
+    font-size: 9px;
+  }
+}
+
+/* Mock-draft board compaction: keep the pick number and position badge on the
+   same top line so the four-round board stays compact without changing any
+   draft logic or ranking data. */
+@media (min-width: 768px) {
+  .mock-draft-board-panel .mock-board-scroll > div {
+    padding: 4px !important;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > div:first-child {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > button {
+    min-height: 54px;
+  }
+
+  .mock-draft-board-panel > .border-t.bg-surface {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .mock-draft-board-panel .mock-board-scroll > div > div > button {
+    min-height: 52px !important;
+    padding: 5px !important;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > button .pt-6 {
+    padding-top: 20px !important;
+  }
+}
+
+/* Mobile mock-draft viewport: keep the site header fixed while the draft
+   shell owns the viewport and the player sheet is the only vertical scroller. */
+@media (max-width: 767px) {
+  html:has(.mock-draft-shell),
+  body:has(.mock-draft-shell) {
+    height: 100%;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  body:has(.mock-draft-shell) > header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 100 !important;
+  }
+
+  .mock-draft-shell {
+    position: fixed !important;
+    top: 4rem !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - 4rem) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .mock-draft-layout {
+    position: relative !important;
+  }
+
+  .mock-player-sheet-handle {
+    touch-action: none;
+  }
+
+  /* Expanded player sheet overlays the entire draft-board area. */
+  .mock-draft-shell .mock-player-panel.mobile-expanded {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: auto !important;
+    flex: none !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    z-index: 30 !important;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.28) !important;
+  }
+
+  /* Collapsed state: the board is content-sized, not percentage-sized.
+     This keeps the player sheet exactly at the board's bottom edge. As picks
+     add content and the grid rows grow, the sheet naturally moves down with
+     the board instead of ever overlapping it. */
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-draft-board-panel {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-board-scroll {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: hidden !important;
+  }
+
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-board-scroll > div {
+    height: auto !important;
+  }
+
+  .mock-draft-shell .mock-player-panel:not(.mobile-expanded) {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    flex: 1 1 0% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    z-index: 20 !important;
+  }
+
+  .mock-draft-shell .mock-player-list {
+    min-height: 0 !important;
+    flex: 1 1 0% !important;
+    height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: max(32px, env(safe-area-inset-bottom)) !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    scrollbar-width: none;
+  }
+
+  .mock-draft-shell .mock-player-list::-webkit-scrollbar {
+    display: none;
+  }
+}
