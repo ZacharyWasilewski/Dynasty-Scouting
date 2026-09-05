@@ -1,0 +1,1128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * DYNASTY DATABASE COLOR SYSTEM — light-primary, with dark used as
+ * strategic emphasis on specific sections, not as the site's default
+ * canvas. This is a genuine, deliberate art-direction decision, not
+ * an inversion of the old dark palette — see the specific values
+ * below, none of which are simply the old dark values flipped.
+ *
+ * Every existing component already uses semantic class names
+ * (bg-void, text-ink, border-border, etc.) rather than hardcoded
+ * colors, which is what makes this actually work: flip the variable
+ * VALUES here, and every component that was already built correctly
+ * inherits the new palette automatically. Nothing about what a class
+ * like `bg-surface` MEANS has changed — only what color it resolves
+ * to.
+ *
+ * .theme-dark is a scoped override, meant to wrap specific sections
+ * (the Model, a major DD Score moment, Mock Draft, etc.) that should
+ * render in the original dark palette as a deliberate contrast beat,
+ * not as the page default. Everything within a .theme-dark wrapper
+ * uses the exact same semantic classes — bg-void inside .theme-dark
+ * still means "primary background," it just resolves to near-black
+ * instead of off-white there.
+ */
+:root {
+  /* Mock draft board column width — a genuine JS/CSS bridge: the
+     column count (teams) is dynamic and only known in JS, but the
+     column width itself needs to differ by breakpoint, which a JS
+     template string can't express on its own. Defined once here as
+     the default (desktop) value; the mobile override lives in the
+     767px board-specific media query below rather than duplicated
+     here, so both stay next to the rest of that breakpoint's rules. */
+  --mock-col-width: 142px;
+
+  /* Base surfaces — a cool, slightly gray off-white as the page
+     canvas (never pure #FFFFFF, per the brief's own explicit
+     direction), with true white reserved for cards/content that
+     needs to visibly lift off that canvas. */
+  --color-void: #F6F7F9;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #EEF0F3;
+  --color-border: #E3E5E9;
+  --color-border-strong: #CBCFD6;
+
+  /* Text — charcoal rather than pure black (per the brief's own
+     "charcoal / near-black" language), softening slightly at each
+     step down rather than jumping straight to a washed-out gray. */
+  --color-ink: #14161B;
+  --color-ink-secondary: #565D6B;
+  --color-ink-tertiary: #838B99;
+
+  /* Accent blue — a deeper, more saturated blue than the dark
+     theme's version specifically because this one has to work as
+     readable TEXT on a light background, not just as a glowing UI
+     highlight against black. This exact value is a well-established,
+     accessible "royal blue" (matches Tailwind's own blue-600) rather
+     than a guess. */
+  --color-accent: #2563EB;
+  --color-accent-dim: #1E40AF;
+  --color-accent-soft: #93C5FD;
+
+  --color-riser: #15803D;
+  --color-faller: #B91C1C;
+  /* Deepened from #16A34A/#DC2626 — computed against this exact
+     background (#F6F7F9): riser was 3.07:1 (fails WCAG's 4.5:1 normal-
+     text minimum outright), faller was 4.51:1 (technically passes,
+     but with essentially zero margin). Both are used as real text in
+     17+ places sitewide (HIT/MISS on every player profile, mock draft
+     save confirmations, score movers), not just as decorative fills,
+     so this needed the full 4.5:1 standard, not the relaxed 3:1 floor
+     for large text. New values: riser 4.68:1, faller 6.04:1. The
+     .theme-dark override below is untouched — #4ADE80/#F87171 against
+     near-black already clear 11.2:1 / 7.1:1 with large margin. */
+}
+
+.theme-dark {
+  /* Exactly the original dark palette, unchanged — this is what
+     "preserve the DNA" means for the sections that keep it. */
+  --color-void: #0A0C0F;
+  --color-surface: #12151A;
+  --color-surface-raised: #181C22;
+  --color-border: #232830;
+  --color-border-strong: #2E343E;
+
+  --color-ink: #EDEFF2;
+  --color-ink-secondary: #9BA3AF;
+  --color-ink-tertiary: #5C6470;
+
+  --color-accent: #3B82F6;
+  --color-accent-dim: #1E40AF;
+  --color-accent-soft: #93C5FD;
+
+  --color-riser: #4ADE80;
+  --color-faller: #F87171;
+
+  /* Scoped dark sections need their own native-UI hints too — a
+     light-themed browser scrollbar/selection color would look wrong
+     floating inside a section that's otherwise fully dark. */
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    /* Safety net against any element (a wide table, a fixed-width
+       chart, etc.) accidentally causing the whole page to scroll
+       sideways on mobile — doesn't affect any component's own
+       intentional overflow-x-auto scroll container, since those are
+       separate scroll contexts. */
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: rgba(37, 99, 235, 0.18);
+  }
+
+  /* Visible keyboard focus everywhere */
+  :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Technical mono remains the metadata/label face.
+     Actual tabular data values use the site's primary Inter face so
+     numbers read cleanly and never inherit specialty zero glyphs. */
+  .font-tech {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-mono.tabular-nums {
+    font-family: var(--font-body);
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Explicit data-number utility for numeric UI that needs the same
+     restrained, business-grade treatment even when it is not paired
+     with Tailwind's tabular-nums utility. */
+  .font-data {
+    font-family: var(--font-body);
+    font-feature-settings: "tnum" 1;
+    font-variant-numeric: tabular-nums lining-nums; font-weight: 500;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 2px solid var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-tertiary);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Entrance animation for hero/section content */
+  .animate-fade-in-up {
+    animation: fadeInUp 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade-in {
+    animation: fadeIn 400ms ease-out both;
+  }
+  .animate-slide-up {
+    animation: slideUp 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Pull-to-refresh's "actively refreshing" state — a slim bar that
+     sweeps left-to-right and loops, distinct from the fill-as-you-pull
+     progress state (which sets width via inline style, no animation
+     needed there since it's directly tracking a touch gesture). */
+  .animate-pull-refresh-sweep {
+    animation: pullRefreshSweep 1.1s ease-in-out infinite;
+  }
+
+  /* Skeleton shimmer for loading states — uses the theme variables
+     (not hardcoded dark values, which would render as dark bars on
+     the new light-default background and look broken) so this
+     correctly adapts within a .theme-dark scoped section too. */
+  .animate-shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-surface-raised) 40%,
+      var(--color-surface) 50%,
+      var(--color-surface-raised) 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pullRefreshSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .mock-board-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  /* Same thin-scrollbar treatment as .mock-board-scroll just above.
+     One shared horizontal scroll wrapper for the entire available-player
+     list. Every row lives inside the same scrollable content track so a
+     swipe moves the complete row together. Sticky action/identity cells
+     remain sticky within this single scroller. */
+  .mock-player-rows-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Clearly identify the user's draft slot without changing the board
+     structure. The inset edges keep the highlight readable even when a
+     pick's tier color owns the normal left border. Was scoped inside
+     the desktop-only media query below — reported directly as
+     missing on mobile, and correctly so: this rule never applied
+     under 1024px at all, not a rendering bug, just never written for
+     that width. Applies everywhere now. */
+  .mock-user-draft-column {
+    background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+    box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
+  }
+
+  /* Desktop: the board owns the vertical space freed by the old
+     selected-player/queue blocks. The board remains unchanged in width
+     or interaction; only its existing grid is allowed to use the full
+     desktop-height panel. */
+  @media (min-width: 1024px) {
+    .mock-draft-layout {
+      height: calc(100vh - 10.5rem);
+    }
+
+    .mock-draft-board-panel {
+      height: 100%;
+      align-self: stretch;
+    }
+
+    .mock-board-scroll {
+      flex: 1 1 auto;
+      height: 100%;
+      max-height: none;
+      overflow-y: auto;
+    }
+
+    .mock-board-scroll > div {
+      min-height: 0;
+      height: auto;
+    }
+
+    /* Desktop board: preserve the compact, landscape cards from the
+       original board while letting the four-round grid breathe. The grid
+       itself stays content-sized so cards never become tall just because
+       the surrounding desktop column is tall. */
+    .mock-board-scroll > div > .grid {
+      min-width: max-content;
+      grid-template-rows: 44px repeat(4, 118px);
+      grid-auto-rows: 118px;
+    }
+
+    .mock-board-scroll > div > .grid > div,
+    .mock-board-scroll > div > .grid > button {
+      width: 142px;
+      min-width: 142px;
+      max-width: 142px;
+      min-height: 0;
+      height: 118px;
+      max-height: 118px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .mock-board-scroll > div > .grid > div {
+      height: 44px;
+      max-height: 44px;
+    }
+
+    .mock-draft-board-panel > .border-t.bg-surface-raised {
+      display: none;
+    }
+  }
+
+  .mock-board-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .mock-board-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mock-board-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border: 0;
+  }
+}
+
+
+
+/* Available-player list: keep the horizontal interaction native and unchanged,
+   but make the identity column a real sticky surface instead of switching its
+   contents when scrollLeft crosses a threshold. This removes the visible snap
+   and keeps the name legible above the stat columns during a swipe. */
+.mock-player-scroll-content {
+  width: max-content;
+  min-width: 100%;
+}
+
+.mock-player-row {
+  width: max-content;
+  min-width: 100%;
+  min-height: 54px;
+}
+
+.mock-player-actions {
+  box-sizing: border-box;
+  background: var(--color-surface);
+  box-shadow: 1px 0 0 var(--color-border-strong);
+}
+
+.mock-player-identity {
+  box-sizing: border-box;
+  background: var(--color-surface);
+  box-shadow: 1px 0 0 var(--color-border-strong);
+}
+
+.mock-player-stat {
+  box-sizing: border-box;
+  min-height: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.mock-player-tier-break {
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .mock-player-row {
+    min-height: 58px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Keep the existing mobile horizontal-scroll model. The wrapper becomes
+     transparent so its two controls can occupy their existing mobile order:
+     Pick -> player identity -> Bookmark. */
+  .mock-player-actions {
+    display: contents;
+  }
+
+  .mock-player-pick {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    margin-left: 4px !important;
+    margin-right: 4px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    white-space: nowrap !important;
+  }
+
+  .mock-player-identity {
+    width: 194px;
+    min-width: 194px;
+    flex: 0 0 194px;
+    box-shadow: none;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    gap: 4px !important;
+  }
+
+  .mock-player-identity button {
+    min-width: 0;
+  }
+
+  .mock-player-identity button > span:first-child {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .mock-player-identity button > span:first-child > span:first-child {
+    min-width: 0;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mock-player-bookmark {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    margin-left: 0 !important;
+    margin-right: 4px !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mock-player-bookmark svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mock-player-stat {
+    width: 104px !important;
+    min-width: 104px !important;
+    max-width: 104px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .mock-player-stat p {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+}
+
+/* Mock-draft setup is a normal document page (unlike the active draft room).
+   Keep its height content-driven on phones so the site-wide mobile tab-bar
+   clearance and a viewport-sized main cannot create a large empty tail below
+   the Start Draft action. */
+@media (max-width: 767px) {
+  /* The site-wide layout reserves space for the fixed mobile tab bar.
+     Mock Draft setup handles that clearance locally so its final CTA can
+     sit just above the bar without inheriting a second large blank buffer. */
+  body:has(.mock-draft-setup) > div.pb-24 {
+    padding-bottom: 0 !important;
+  }
+
+  main:has(.mock-draft-setup) {
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .mock-draft-setup {
+    /* Reserve only the actual tab-bar clearance so the setup page remains
+       tappable above the fixed nav without creating a long blank tail. */
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)) !important;
+    min-height: 0 !important;
+  }
+}
+
+/* Full-screen mobile mock-draft app behavior.  The page owns the viewport;
+   only the player list and the board's internal horizontal area can scroll. */
+@media (max-width: 767px) {
+  :root {
+    /* Reported directly: cells read as too wide relative to their
+       height on mobile specifically — 142px was originally sized
+       for desktop, where there's room to spare; at mobile widths it
+       makes every cell look squat and stretched rather than
+       balanced. Narrower here only; desktop keeps its original
+       142px default from :root above, unaffected by this override. */
+    --mock-col-width: 116px;
+  }
+
+  html:has(.mock-draft-shell),
+  body:has(.mock-draft-shell) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+
+  body:has(.mock-draft-shell) > header {
+    width: 100vw;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  body:has(.mock-draft-shell) .mock-draft-page {
+    width: 100%;
+    max-width: 100vw;
+    height: calc(100dvh - 4rem);
+    min-height: calc(100dvh - 4rem);
+    overflow: hidden;
+  }
+
+  .mock-draft-shell {
+    width: 100%;
+    max-width: 100%;
+    height: calc(100dvh - 4rem);
+    min-height: 0;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mock-draft-toolbar {
+    flex: 0 0 62px;
+    min-height: 62px;
+    margin: 0 !important;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    padding: 6px 12px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .mock-draft-toolbar > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 8px !important;
+  }
+
+  .mock-draft-toolbar > div:first-child > button {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .mock-draft-toolbar > div:first-child > div {
+    min-width: 0;
+  }
+
+  .mock-draft-toolbar h2 {
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .mock-draft-toolbar p {
+    margin-top: 2px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 10px;
+  }
+
+  .mock-draft-toolbar > div:last-child {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 5px 9px !important;
+  }
+
+  .mock-draft-toolbar > div:last-child span:last-child {
+    font-size: 11px;
+  }
+
+  .mock-draft-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    display: flex !important;
+    flex-direction: column;
+    gap: 0 !important;
+    overflow: hidden;
+  }
+
+  .mock-draft-board-panel {
+    flex: 0 0 46%;
+    min-height: 0;
+    height: 46%;
+    display: flex;
+    flex-direction: column;
+    border-left: 0;
+    border-right: 0;
+    overflow: hidden;
+  }
+
+  .mock-draft-board-panel > .flex {
+    flex: 0 0 36px;
+    min-height: 36px;
+    padding: 5px 10px !important;
+  }
+
+  /* The rule that used to live here (hiding a "Draft board" label's
+     first <p>) is now obsolete — that label was removed from the
+     JSX entirely, not just hidden. Keeping the old CSS rule around
+     would have actively broken the new header instead: the pick
+     label is now the first <p> of its own parent, which this
+     selector would have incorrectly matched and hidden at mobile
+     widths. Removed rather than left as dead, dangerous CSS. */
+  .mock-draft-board-panel > .flex .mock-draft-pick-label {
+    display: block !important;
+    margin-top: 0 !important;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .mock-board-scroll {
+    flex: 1 1 auto;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-x;
+  }
+
+  .mock-board-scroll > div {
+    min-height: 100%;
+    padding: 2px !important;
+  }
+
+  .mock-board-scroll button {
+    min-height: 46px !important;
+    padding: 4px !important;
+  }
+
+  .mock-board-scroll button p {
+    font-size: 9px;
+  }
+
+  .mock-board-scroll button .pt-6 {
+    padding-top: 18px !important;
+  }
+
+  .mock-board-scroll button .pt-4 {
+    padding-top: 10px;
+  }
+
+  .mock-board-scroll button img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mock-your-picks {
+    display: none;
+  }
+
+  .mock-player-panel {
+    flex: 1 1 54%;
+    /* Was min-height: 0 — meaning nothing stopped this panel from
+       shrinking toward zero if the fixed-height budget above it
+       (toolbar + header + search bar) ever exceeded the space
+       actually available in a constrained toolbar configuration.
+       Reported directly: available players became barely visible on
+       certain Safari toolbar states. 280px is enough for this
+       panel's own fixed chrome (~122px: the 40px header + 82px
+       search/filter bar) plus roughly two real player rows — the
+       draft board above it can keep shrinking further if the
+       viewport is genuinely tight, but the list of players you're
+       actually choosing from never goes below a usable floor. */
+    min-height: 280px;
+    height: 54%;
+    display: flex;
+    flex-direction: column;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    overflow: hidden;
+  }
+
+  .mock-player-header {
+    flex: 0 0 36px;
+    min-height: 36px;
+    padding: 4px 10px !important;
+  }
+
+  .mock-player-header p:first-child {
+    display: none;
+  }
+
+  .mock-player-header p.mt-1 {
+    margin-top: 0 !important;
+    font-size: 12px;
+  }
+
+  .mock-player-controls {
+    flex: 0 0 76px;
+    padding: 5px 10px !important;
+  }
+
+  .mock-player-controls > div:first-child {
+    height: 32px;
+  }
+
+  .mock-player-controls input {
+    font-size: 16px !important;
+    line-height: 1.25;
+  }
+
+  .mock-player-controls .mb-1\.5 {
+    margin-bottom: 5px !important;
+  }
+
+  .mock-player-controls .mt-2 {
+    margin-top: 5px !important;
+  }
+
+  .mock-player-list {
+    flex: 1 1 auto;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    padding-bottom: 0 !important;
+    overflow-y: auto !important;
+    /* overflow-x stays hidden here — the horizontal scroll belongs on
+       the separate inner wrapper further down, not this element. But
+       the explicit touch-action: pan-y this comment used to describe
+       was itself a real regression, reported directly: it blocked
+       vertical scrolling from working AT ALL, since the inner
+       wrapper's own touch-action: pan-x was capturing every touch
+       across the full row area (not some small horizontal strip) and
+       never letting the gesture reach this parent. Explicit
+       touch-action per axis was the wrong tool here, not just
+       mistuned — removed entirely on both this element and the inner
+       wrapper, letting the browser's own default gesture
+       disambiguation (driven by the overflow properties themselves)
+       handle it instead of a manual axis lock that turned out to be
+       unreliable in this specific nested case.
+
+       Reported directly, with video: the sticky name column wasn't
+       actually staying pinned — it was sliding left along with the
+       stats, showing "ah S..." instead of "Jeremiah S...", rank
+       numbers included. overflow-x: hidden here still establishes a
+       scroll container per the CSS spec, even though nothing can
+       interactively scroll it — meaning this element and the actual
+       intended one (.mock-player-row-scroll's overflow-x: auto,
+       further down) were both valid "nearest scrolling ancestor"
+       candidates for position: sticky on the name column, and the
+       wrong one may have been winning. Removed here since the inner
+       wrapper already fully contains its own horizontal overflow on
+       its own — this outer hidden was redundant, not load-bearing.
+
+       REVERTED — reported directly as making things worse (row
+       separators disappearing entirely), immediately after this
+       exact change. My hypothesis about which ancestor sticky was
+       binding to may still be right, or may not be; either way, this
+       specific change is not net-positive as shipped, and I don't
+       have a way to verify the real cause without actually seeing it
+       render. Restoring the known-safe value rather than stacking
+       another unverified change on top of one that just made things
+       worse. */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Removed: .mock-player-list > div > div { padding-top/bottom: 9px
+     !important; }. This was written for the row structure before the
+     .mock-player-row-scroll horizontal-scroll wrapper existed. That
+     wrapper is now the direct child this selector's first ">div"
+     matches, and each row's own bordered container (not some inner
+     content element) is now what the second ">div" matches — meaning
+     this rule has been forcibly injecting 9px of padding, with
+     !important, directly onto the exact element carrying the row
+     separator border, on top of everything intentionally set via
+     Tailwind classes this session. Reported directly as still broken
+     after two separate visibility-based fixes (border color, then
+     hover state) — this is why: those fixes were correct as far as
+     they went, but this leftover rule was independently distorting
+     the row's actual layout underneath them the whole time. */
+
+  .mock-player-list .mock-community-rank {
+    display: block !important;
+  }
+
+  .mock-player-list button {
+    min-height: 36px;
+  }
+
+  .mock-player-list .text-sm {
+    font-size: 13px;
+  }
+
+  .mock-player-list .text-\[10px\] {
+    font-size: 9px;
+  }
+}
+
+/* Mock-draft board compaction: keep the pick number and position badge on the
+   same top line so the four-round board stays compact without changing any
+   draft logic or ranking data. */
+@media (min-width: 768px) {
+  .mock-draft-board-panel .mock-board-scroll > div {
+    padding: 4px !important;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > div:first-child {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > button {
+    min-height: 54px;
+  }
+
+  .mock-draft-board-panel > .border-t.bg-surface {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .mock-draft-board-panel .mock-board-scroll > div > div > button {
+    min-height: 52px !important;
+    padding: 5px !important;
+  }
+
+  .mock-draft-board-panel .mock-board-scroll > div > div > button .pt-6 {
+    padding-top: 20px !important;
+  }
+}
+
+/* Mobile mock-draft viewport: keep the site header fixed while the draft
+   shell owns the viewport and the player sheet is the only vertical scroller. */
+@media (max-width: 767px) {
+  html:has(.mock-draft-shell),
+  body:has(.mock-draft-shell) {
+    height: 100%;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  body:has(.mock-draft-shell) > header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 100 !important;
+  }
+
+  .mock-draft-shell {
+    position: fixed !important;
+    top: 4rem !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: calc(100dvh - 4rem) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .mock-draft-layout {
+    position: relative !important;
+  }
+
+  .mock-player-sheet-handle {
+    touch-action: none;
+  }
+
+  /* Expanded player sheet overlays the entire draft-board area. */
+  .mock-draft-shell .mock-player-panel.mobile-expanded {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: auto !important;
+    flex: none !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    z-index: 30 !important;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.28) !important;
+  }
+
+  /* Collapsed state: the board is content-sized, not percentage-sized.
+     This keeps the player sheet exactly at the board's bottom edge. As picks
+     add content and the grid rows grow, the sheet naturally moves down with
+     the board instead of ever overlapping it. */
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-draft-board-panel {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-board-scroll {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: hidden !important;
+  }
+
+  .mock-draft-shell .mock-draft-layout:not(:has(.mobile-expanded)) .mock-board-scroll > div {
+    height: auto !important;
+  }
+
+  .mock-draft-shell .mock-player-panel:not(.mobile-expanded) {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    flex: 1 1 0% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    z-index: 20 !important;
+  }
+
+  .mock-draft-shell .mock-player-list {
+    min-height: 0 !important;
+    flex: 1 1 0% !important;
+    height: 0 !important;
+    overflow-y: auto !important;
+    /* Same fix as the other .mock-player-list instance above — the
+       explicit touch-action: pan-y here (paired with pan-x on the
+       inner horizontal wrapper) was the actual cause of a real
+       regression: vertical scrolling stopped working entirely,
+       reported directly. Removed on both this and the inner wrapper.
+
+       overflow-x: hidden reverted here too, alongside the other
+       instance — removing it was reported as making things worse
+       (row separators disappearing), so restoring it rather than
+       compounding an unverified change. */
+    overflow-x: hidden !important;
+    padding-bottom: max(32px, env(safe-area-inset-bottom)) !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+
+  .mock-draft-shell .mock-player-list::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+/* Sitewide edge-case polish: expensive motion should never make live data feel
+   like it is fighting the user, and small screens should retain predictable
+   tap/scroll behavior even during a route refresh. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (max-width: 767px) {
+  button, a, input, select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  input, select {
+    font-size: 16px;
+  }
+}
+
+
+/* iOS Safari zooms the page when a form control's computed font size is below
+   16px. The draft-room search input is intentionally kept at 16px on phones;
+   this prevents the search tap from changing the browser's visual scale while
+   preserving the compact desktop treatment. */
+@media (max-width: 767px) {
+  .mock-draft-shell input[type="search"],
+  .mock-draft-shell input[placeholder="Search players"] {
+    font-size: 16px !important;
+  }
+}
+
+/* Mock Draft player workspace polish. Intentionally scoped only to the
+   player-panel controls/list; the draft board above is left untouched. */
+@media (max-width: 767px) {
+  .mock-draft-shell .mock-player-header {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+  .mock-draft-shell .mock-player-header > nav {
+    width: 100%;
+  }
+
+  .mock-draft-shell .mock-player-header > nav > button {
+    min-height: 36px;
+    white-space: nowrap;
+  }
+
+  .mock-draft-shell .mock-player-controls {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 8px 10px !important;
+  }
+
+  .mock-draft-shell .mock-player-controls > div {
+    min-height: 40px;
+  }
+
+  .mock-draft-shell .mock-player-controls > div:first-child:not(:has(button)) {
+    min-height: 40px;
+  }
+
+  .mock-draft-shell .mock-player-controls button {
+    min-height: 40px;
+  }
+
+  .mock-draft-shell .mock-player-controls input {
+    min-height: 32px;
+    font-size: 16px !important;
+  }
+
+  /* Same removal as the plain .mock-player-list instance above, same
+     reasoning — this one uses !important and a more specific
+     selector, so it would have kept winning the cascade and
+     reintroducing the exact same padding distortion even after
+     removing the other rule. */
+
+  .mock-draft-shell .mock-player-list .text-sm {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+
+  .mock-draft-shell .mock-player-list .text-\[10px\] {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+}
+
+/* Mobile mock-draft results navigation: keep the return button on one line
+   and prevent it from shrinking into the title area. */
+@media (max-width: 767px) {
+  .mock-draft-toolbar .back-to-results {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    min-width: max-content !important;
+  }
+
+  .mock-draft-toolbar > div:first-child > div {
+    min-width: 0;
+  }
+}
