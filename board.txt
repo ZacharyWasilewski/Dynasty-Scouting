@@ -1,0 +1,201 @@
+
+      <div className="mock-draft-layout flex min-h-0 min-w-0 flex-1 flex-col gap-0 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,.9fr)] lg:gap-4">
+        <div className="mock-draft-board-panel flex h-[48%] min-h-0 min-w-0 shrink-0 flex-col border-b border-border bg-void lg:h-auto lg:min-h-0 lg:border lg:border-border-strong">
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-surface px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="flex items-center gap-2">
+              {/* "Draft board" label removed — the grid of team
+                  columns is self-evidently a board; a text label
+                  above it added a full row of height to say something
+                  the layout already communicates on its own. Round/
+                  Pick promoted straight to the top of this header. */}
+              <p className="mock-draft-pick-label font-headline text-sm uppercase leading-none tracking-tight text-ink sm:text-xl lg:text-2xl">
+                {draftComplete ? "Draft Complete" : <>Round {currentRound} · Pick {formatPick(currentOverall, teams)}</>}
+              </p>
+              {isUserTurn && (
+                <span className="inline-flex shrink-0 items-center gap-1 border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-widest2 text-accent">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Your Pick
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest2 text-ink-tertiary">
+              <ChevronLeft className="h-4 w-4" /> swipe <ChevronRight className="h-4 w-4" />
+            </div>
+          </div>
+
+          <div ref={draftBoardScrollRef} className="mock-board-scroll min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain scroll-smooth lg:h-auto lg:max-h-[calc(100vh-17rem)] lg:overflow-auto">
+            <div className="p-2 sm:p-3" style={{ minWidth: `${teams * 104}px` }}>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${teams}, minmax(100px, 1fr))` }}>
+                {/* snap-start here, not on some wrapping "column" div —
+                    this is a CSS grid, so a team's own picks are
+                    separate cells sharing a grid-column position, not
+                    nested inside one discrete column element. The
+                    header cell is the one real per-team DOM node,
+                    positioned by the grid at the correct horizontal
+                    spot, so it's what the browser's native scroll-snap
+                    aligns to. Genuine native scroll-snap, not a custom
+                    touch handler — swiping between teams now settles
+                    cleanly on a column edge instead of stopping at
+                    whatever arbitrary position momentum happened to
+                    leave it at. */}
+                {Array.from({ length: teams }, (_, i) => i + 1).map((team) => (
+                  <div key={team} className={cn("snap-start border-b border-r border-border bg-surface-raised px-1.5 py-1.5", team === slot && "mock-user-draft-column bg-accent/5")}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-data text-[9px] font-semibold", team === slot ? "border-accent bg-accent/10 text-accent" : "border-border-strong bg-surface-raised text-ink-tertiary")}>{team}</span>
+                        <span className="truncate font-mono text-[9px] font-semibold uppercase tracking-widest2 text-ink-secondary">Team {team}</span>
+                      </span>
+                      {team === slot && <span className="font-mono text-[8px] uppercase tracking-widest2 text-accent">You</span>}
+                    </div>
+                  </div>
+                ))}
+
+                {Array.from({ length: Math.ceil(maxPicks / teams) }).map((_, roundIndex) => (
+                  Array.from({ length: teams }, (_, slotIndex) => {
+                    const team = slotIndex + 1;
+                    const overall = roundIndex * teams + team;
+                    const pick = picks.find((p) => p.overall === overall);
+                    const player = pick ? prospectById.get(pick.playerId) : undefined;
+                    const pickTier = player ? getTierForFormat(player, qbFormat, teFormat) : undefined;
+                    const isCurrent = overall === currentOverall;
+                    return (
+                      <button
+                        key={overall}
+                        type="button"
+                        onClick={() => pick && setExpandedPick(expandedPick === overall ? null : overall)}
+                        className={cn(
+                          "relative min-h-[46px] border-b border-r border-l-[3px] border-border p-1.5 text-left transition-colors",
+                          // A single prioritized background choice, not
+                          // several bg-* utilities layered together —
+                          // Tailwind utilities of equal specificity
+                          // don't reliably "win" based on className
+                          // order, only on their generated CSS source
+                          // order, which isn't something to depend on.
+                          // Computing one class up front avoids that
+                          // risk entirely. The alternating round tint
+                          // is intentionally faint (2% opacity) — the
+                          // ask was "not drastic," and this is meant
+                          // to add quiet rhythm to a grid that reads
+                          // as flat with every cell on identical white,
+                          // not to introduce a loud striping pattern.
+                          isCurrent ? "bg-accent/10 ring-1 ring-inset ring-accent" : team === slot ? "mock-user-draft-column bg-accent/5" : roundIndex % 2 === 1 ? "bg-void/[0.025]" : "bg-surface",
+                          pick && "hover:bg-surface-raised"
+                        )}
+                        style={pickTier ? { borderLeftColor: getTierColor(pickTier) } : undefined}
+                      >
+                        <span className="absolute right-2 top-2 font-data text-[9px] text-ink-tertiary">{formatPick(overall, teams)}</span>
+                        {player ? (
+                          // Was a normal-flow text block with the photo
+                          // absolutely pinned to the bottom-right corner
+                          // over it — for a name that wraps to 2-3 lines
+                          // (line-clamp-3 allows exactly that), the text
+                          // could extend down far enough to collide with
+                          // the photo, since absolute positioning means
+                          // neither element accounts for the other's
+                          // actual size. Reported directly, with a
+                          // screenshot showing "Jeremiah Smith" and "Cam
+                          // Coleman" overlapping their own photos. A real
+                          // flex row instead: the photo gets a fixed,
+                          // reserved width via shrink-0, and the text
+                          // column is constrained to whatever's left
+                          // (min-w-0 flex-1) — text wraps or truncates
+                          // within its own space, never behind the photo,
+                          // regardless of how long the name is.
+                          <div className="relative flex animate-fade-in items-start gap-1 pt-6 lg:block lg:pt-8">
+                            <div className="min-w-0 flex-1 lg:pr-16">
+                              <span className={cn("absolute left-2 top-2.5 inline-flex border px-1.5 py-0.5 font-mono text-[8px] font-semibold", POSITION_CLASS[player.position])}>{player.position}</span>
+                              <p className="line-clamp-2 break-words text-[11px] font-semibold leading-[1.15] text-ink">{player.name}</p>
+                              <p className="mt-1 font-data text-[10px] font-semibold" style={{ color: pickTier ? getTierColor(pickTier) : undefined }}>DD {getScoreForFormat(player, qbFormat, teFormat)?.toFixed(1) ?? "TBD"}</p>
+                            </div>
+                            {player.photoUrl && (
+                              <Image
+                                src={player.photoUrl}
+                                alt=""
+                                width={24}
+                                height={24}
+                                unoptimized
+                                className="h-6 w-6 shrink-0 rounded-full object-cover opacity-90 lg:absolute lg:bottom-2 lg:right-2 lg:h-12 lg:w-12"
+                              />
+                            )}
+                          </div>
+                        ) : isCurrent ? (
+                          <div className="flex h-full min-h-[40px] items-center justify-center">
+                            <div className="text-center">
+                              <Sparkles className="mx-auto h-4 w-4 text-accent" />
+                              <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest2 text-accent">{isUserTurn ? "Your pick" : "On the clock"}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex h-full min-h-[40px] items-end justify-end"><span className="font-mono text-[10px] text-ink-tertiary">—</span></div>
+                        )}
+                      </button>
+                    );
+                  })
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden border-t border-border bg-surface-raised px-4 py-3 lg:block">
+            {paused ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-ink-secondary"><Pause className="h-3.5 w-3.5 text-accent" /> Draft paused</div>
+                <button type="button" onClick={() => setPaused(false)} className="border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest2 text-accent hover:bg-accent/20">Resume</button>
+              </div>
+            ) : draftComplete ? (
+              <div className="flex items-center gap-2 text-xs text-ink-secondary"><Trophy className="h-3.5 w-3.5 text-accent" /> Draft complete</div>
+            ) : computerThinking ? (
+              <div className="flex items-center gap-2 text-xs text-ink-secondary"><span className="h-2 w-2 animate-pulse rounded-full bg-accent" /> {engineLabel(engine)} is making a pick…</div>
+            ) : isUserTurn ? (
+              <div className="flex items-center justify-between gap-3">
+                <div><p className="font-mono text-[9px] uppercase tracking-widest2 text-accent">On the clock</p><p className="mt-1 text-sm font-semibold text-ink">Your pick: {formatPick(currentOverall, teams)}</p></div>
+                {pickTimer === "UNTIMED" || remainingSeconds === null ? (
+                  <span className="font-mono text-[9px] uppercase tracking-widest2 text-ink-tertiary">No timer</span>
+                ) : (
+                  <span className={cn("font-data text-2xl font-bold", remainingSeconds <= 10 ? "text-faller" : "text-ink")}>
+                    {formatCountdown(remainingSeconds)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-ink-secondary">Waiting for the computer to select {formatPick(currentOverall, teams)}.</div>
+            )}
+          </div>
+        </div>
+
+        <div className={cn("mock-player-panel relative z-20 flex min-h-0 min-w-0 flex-col border-t border-border bg-surface lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-hidden lg:border", mobilePlayersExpanded ? "mobile-expanded" : "h-[52%]", "lg:static lg:h-auto lg:shadow-none")}>
+          <div
+            className="mock-player-sheet-handle mock-player-header shrink-0 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5"
+            onTouchStart={(e) => { mobileSheetTouchStart.current = e.touches[0]?.clientY ?? null; }}
+            onTouchEnd={(e) => {
+              const start = mobileSheetTouchStart.current;
+              const end = e.changedTouches[0]?.clientY;
+              mobileSheetTouchStart.current = null;
+              if (start == null || end == null) return;
+              const delta = end - start;
+              if (Math.abs(delta) < 35) return;
+              setMobilePlayersExpanded(delta < 0);
+            }}
+          >
+            <button type="button" aria-label={mobilePlayersExpanded ? "Collapse players" : "Expand players"} onClick={() => setMobilePlayersExpanded((v) => !v)} className="mx-auto mb-1.5 block h-1.5 w-10 rounded-full bg-border-strong lg:hidden" />
+            <nav aria-label="Mock draft player views" className="grid grid-cols-3 items-stretch">
+              <button type="button" onClick={() => { closePlayerSearch(); setMobilePlayerTab("available"); setMobilePlayersExpanded(false); }} className={cn("min-h-9 border-r border-border px-2 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest2", mobilePlayerTab === "available" ? "text-accent" : "text-ink-tertiary")}>Players</button>
+              <button type="button" onClick={() => { closePlayerSearch(); setMobilePlayerTab("queue"); setMobilePlayersExpanded(false); }} className={cn("min-h-9 border-r border-border px-2 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest2", mobilePlayerTab === "queue" ? "text-accent" : "text-ink-tertiary")}>
+                <span className="inline-flex items-center gap-1">Queue{queue.length > 0 && <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[8px] text-accent">{queue.length}</span>}</span>
+              </button>
+              <button type="button" onClick={() => { closePlayerSearch(); setMobilePlayerTab("team"); setMobilePlayersExpanded(false); }} className={cn("min-h-9 px-2 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest2", mobilePlayerTab === "team" ? "text-accent" : "text-ink-tertiary")}>My Team</button>
+            </nav>
+          </div>
+
+          {/* Best Available/Best Fit callout removed entirely — was
+              here, but reported directly as consuming too much
+              vertical space before the actual player list even
+              starts. The same information (rank #1, tier, DD Score)
+              is still the very first row of the list itself, just
+              without a second, separate section repeating it above
+              the list. */}
+
+          <div className={cn("mock-player-controls border-b border-border px-3 py-2", mobilePlayerTab !== "available" && "hidden lg:block")}>
+            {searchOpen ? (
+              <div className="flex min-h-10 items-center gap-2 border border-border-strong bg-surface-raised px-3 py-1.5">
+                <Search className="h-4 w-4 shrink-0 text-ink-tertiary" />
+                <input
