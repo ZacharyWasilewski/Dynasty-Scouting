@@ -14,9 +14,19 @@ import { matchKey } from "@/lib/collegePhotos";
  * skipped rather than guessed, so nobody gets someone else's face.
  */
 
-const SEARCH_URL = (name: string) =>
-  `https://site.web.api.espn.com/apis/common/v3/search?query=${encodeURIComponent(name)}&limit=10&type=player&sport=football&league=nfl`;
-const headshotUrl = (id: string) => `https://a.espncdn.com/i/headshots/nfl/players/full/${id}.png`;
+const SEARCH_URLS = (name: string) => {
+  const q = encodeURIComponent(name);
+  return [
+    // The endpoint espn.com's own site search uses — indexes retired players too.
+    `https://site.web.api.espn.com/apis/search/v2?region=us&lang=en&query=${q}&limit=10&mode=prefix&page=1`,
+    `https://site.web.api.espn.com/apis/common/v3/search?query=${q}&limit=10&type=player&sport=football`,
+  ];
+};
+// ESPN league ids inside an athlete uid ("s:20~l:28~a:12345"): 28 = NFL, 23 = college football.
+const headshotUrl = (id: string, leagueId: string) =>
+  leagueId === "28"
+    ? `https://a.espncdn.com/i/headshots/nfl/players/full/${id}.png`
+    : `https://a.espncdn.com/i/headshots/college-football/players/full/${id}.png`;
 
 const HIT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MISS_TTL_MS = 60 * 60 * 1000;
@@ -66,48 +76,71 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 
 type Outcome = "hit" | "search-failed" | "no-match" | "ambiguous" | "image-missing";
 const outcomeCounts: Record<Outcome, number> = { hit: 0, "search-failed": 0, "no-match": 0, ambiguous: 0, "image-missing": 0 };
-let sampleLogged = 0;
+let diagLogged = 0;
+
+interface Candidate {
+  id: string;
+  leagueId: string;
+  text: string;
+}
+
+function toCandidates(items: SearchItem[], key: string): Candidate[] {
+  const out: Candidate[] = [];
+  for (const item of items) {
+    const display = item.displayName ?? item.name ?? item.fullName;
+    if (!display || matchKey(display) !== key) continue;
+    if (item.sport && item.sport !== "football") continue;
+    const uid = String(item.uid ?? "");
+    const id = item.id !== undefined ? String(item.id) : /~a:(\d+)/.exec(uid)?.[1];
+    if (!id || !/^\d+$/.test(id)) continue;
+    // Skip anything that isn't an athlete (teams, articles, etc.).
+    if (uid && !uid.includes("~a:")) continue;
+    const leagueId = /~l:(\d+)/.exec(uid)?.[1] ?? (item.league === "nfl" ? "28" : "");
+    if (leagueId !== "28" && leagueId !== "23") continue;
+    out.push({ id, leagueId, text: `${item.position ?? ""} ${item.subtitle ?? ""} ${item.description ?? ""}`.toUpperCase() });
+  }
+  return out;
+}
 
 async function resolveOne(name: string, position: string): Promise<{ url: string | null; outcome: Outcome }> {
-  const res = await fetchWithTimeout(SEARCH_URL(name));
-  if (!res || !res.ok) return { url: null, outcome: "search-failed" };
-  let json: unknown;
-  try {
-    json = await res.json();
-  } catch {
-    return { url: null, outcome: "search-failed" };
-  }
-  const items = collectItems(json);
-  if (sampleLogged < 2) {
-    sampleLogged++;
-    console.error(`[espn-nfl-photos] sample search for "${name}": ${items.length} items, first: ${JSON.stringify(items[0] ?? null).slice(0, 400)}`);
-  }
   const key = matchKey(name);
-  const matches = items.filter((item) => {
-    const display = item.displayName ?? item.name ?? item.fullName;
-    if (!display || item.id === undefined) return false;
-    if (item.sport && item.sport !== "football") return false;
-    return matchKey(display) === key;
-  });
-  const ids = [...new Set(matches.map((m) => String(m.id)))];
-  let id: string | undefined;
-  if (ids.length === 1) id = ids[0];
-  else if (ids.length > 1) {
-    // Same-name players: prefer NFL entries, then one that lists our position.
-    const nfl = matches.filter((m) => m.league === "nfl" || String(m.uid ?? "").includes("l:28"));
-    const nflIds = [...new Set(nfl.map((m) => String(m.id)))];
-    if (nflIds.length === 1) id = nflIds[0];
-    else {
-      const pool = nfl.length > 0 ? nfl : matches;
-      const byPos = pool.filter((m) => `${m.position ?? ""} ${m.subtitle ?? ""} ${m.description ?? ""}`.toUpperCase().includes(position.toUpperCase()));
-      const posIds = [...new Set(byPos.map((m) => String(m.id)))];
-      if (posIds.length === 1) id = posIds[0];
+  let anySearchOk = false;
+  let candidates: Candidate[] = [];
+  for (const searchUrl of SEARCH_URLS(name)) {
+    const res = await fetchWithTimeout(searchUrl);
+    if (!res || !res.ok) continue;
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch {
+      continue;
     }
-    if (!id) return { url: null, outcome: "ambiguous" };
+    anySearchOk = true;
+    const items = collectItems(json);
+    candidates = toCandidates(items, key);
+    if (candidates.length === 0 && diagLogged < 3) {
+      diagLogged++;
+      const root = json && typeof json === "object" ? Object.keys(json as object).join(",") : typeof json;
+      console.error(`[espn-nfl-photos] no match for "${name}" via ${new URL(searchUrl).pathname}: ${items.length} items, root keys [${root}], first: ${JSON.stringify(items[0] ?? null).slice(0, 300)}`);
+    }
+    if (candidates.length > 0) break;
   }
-  if (!id) return { url: null, outcome: "no-match" };
+  if (!anySearchOk) return { url: null, outcome: "search-failed" };
+  if (candidates.length === 0) return { url: null, outcome: "no-match" };
+
+  // Prefer NFL entries; fall back to college-football ones.
+  const nfl = candidates.filter((c) => c.leagueId === "28");
+  const pool = nfl.length > 0 ? nfl : candidates;
+  let ids = [...new Set(pool.map((c) => c.id))];
+  if (ids.length > 1) {
+    const byPos = pool.filter((c) => c.text.includes(position.toUpperCase()));
+    ids = [...new Set(byPos.map((c) => c.id))];
+  }
+  if (ids.length !== 1) return { url: null, outcome: "ambiguous" };
+  const chosen = pool.find((c) => c.id === ids[0])!;
+
   // Confirm the image really exists (GET, body discarded).
-  const url = headshotUrl(id);
+  const url = headshotUrl(chosen.id, chosen.leagueId);
   const img = await fetchWithTimeout(url);
   if (img) void img.body?.cancel();
   return img && img.ok ? { url, outcome: "hit" } : { url: null, outcome: "image-missing" };

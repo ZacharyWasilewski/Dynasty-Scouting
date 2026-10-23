@@ -98,7 +98,30 @@ async function fetchSheetRows(): Promise<Row[]> {
  * throwing — these are supplemental, so a hiccup here shouldn't take
  * down the rest of the site.
  */
-async function fetchNamedTabRows(sheetName: string, attempt = 1): Promise<Row[]> {
+// Last good copy of every tab. A rate-limited or failed fetch used to come
+// back as an empty tab, which silently dropped whole classes (the 2027 / 2028
+// "Class" tabs, or a position tab's school + draft data) until the next
+// refresh. Falling back to the last good copy keeps them on the site, and
+// settled historical tabs are re-fetched only occasionally so a refresh no
+// longer sends ~100 requests at Google's rate limit.
+const tabRowsCache = new Map<string, { rows: Row[]; at: number }>();
+
+async function fetchNamedTabRows(sheetName: string, opts: { maxAgeMs?: number } = {}): Promise<Row[]> {
+  const cached = tabRowsCache.get(sheetName);
+  if (cached && opts.maxAgeMs !== undefined && Date.now() - cached.at < opts.maxAgeMs) return cached.rows;
+  const rows = await fetchNamedTabRowsUncached(sheetName);
+  if (rows.length > 3) {
+    tabRowsCache.set(sheetName, { rows, at: Date.now() });
+    return rows;
+  }
+  if (cached) {
+    console.error(`[sheet] Fetch of tab "${sheetName}" came back empty; reusing the last good copy.`);
+    return cached.rows;
+  }
+  return rows;
+}
+
+async function fetchNamedTabRowsUncached(sheetName: string, attempt = 1): Promise<Row[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
   try {
     // Same rule as the master sheet: one snapshot cache controls freshness.
@@ -108,7 +131,7 @@ async function fetchNamedTabRows(sheetName: string, attempt = 1): Promise<Row[]>
       // are fetched in a short window. Back off and retry rather than
       // silently losing the data.
       await new Promise((r) => setTimeout(r, attempt * 600));
-      return fetchNamedTabRows(sheetName, attempt + 1);
+      return fetchNamedTabRowsUncached(sheetName, attempt + 1);
     }
     if (!res.ok) return [];
     const text = await res.text();
@@ -334,7 +357,11 @@ function resolveTabName(position: "QB" | "RB" | "WR" | "TE", draftClass: string)
  * a missing/renamed tab doesn't take down the rest of the site.
  */
 async function fetchPositionTab(position: "QB" | "RB" | "WR" | "TE", tabName: string): Promise<Map<string, RawTabData>> {
-  const rows = await fetchNamedTabRows(tabName);
+  // Classes drafted two or more years ago rarely change, so those tabs are
+  // re-fetched at most every 10 minutes; recent classes stay fully live.
+  const tabYear = Number(`20${tabName.slice(-2)}`);
+  const settled = Number.isFinite(tabYear) && tabYear <= new Date().getFullYear() - 2;
+  const rows = await fetchNamedTabRows(tabName, settled ? { maxAgeMs: 10 * 60 * 1000 } : {});
 
   const header = findHeaderPair(rows, "Name", "School");
   const map = new Map<string, RawTabData>();
