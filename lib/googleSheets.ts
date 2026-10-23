@@ -946,7 +946,7 @@ function parseProspects(rows: Row[]): Prospect[] {
 
   const prospects: Prospect[] = [];
 
-  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+  for (let i = Math.max(headerRowIndex + 1, 0); i < rows.length; i++) {
     const r = rows[i];
     if (!r) continue;
     const rawName = r[cName]?.trim();
@@ -1014,8 +1014,34 @@ function parseProspects(rows: Row[]): Prospect[] {
  * for those instead of a final score.
  */
 function parseFutureClassTab(rows: Row[], classYear: string): Prospect[] {
-  const header = findHeaderPair(rows, "Name", "Position");
-  if (!header) return [];
+  let header = findHeaderPair(rows, "Name", "Position");
+  if (!header) {
+    // Google's CSV export sometimes folds or drops the header row of a tab
+    // (it guesses header rows from column types). Fall back to locating the
+    // Name/Position columns from the data: the first cell that is a valid
+    // position sitting right after a non-empty name.
+    for (let i = 0; i < rows.length && !header; i++) {
+      const row = rows[i] ?? [];
+      for (let j = 1; j < row.length; j++) {
+        if (
+          VALID_POSITIONS.includes(row[j]?.trim() as Position) &&
+          row[j - 1]?.trim() &&
+          !VALID_POSITIONS.includes(row[j - 1]?.trim() as Position)
+        ) {
+          header = { row: i - 1, col: j - 1 };
+          break;
+        }
+      }
+    }
+    if (!header) {
+      console.error(
+        `[sheet] ${classYear} class tab: no header or data found; first rows: ` +
+          JSON.stringify(rows.slice(0, 4).map((r) => (r ?? []).slice(0, 8)))
+      );
+      return [];
+    }
+    console.error(`[sheet] ${classYear} class tab: header row missing, inferred name column ${header.col} from data`);
+  }
   const { row: headerRowIndex, col: c } = header;
   const cName = c;
   const cPosition = c + 1;
