@@ -12,8 +12,8 @@ import {
   type OpportunityPosition,
 } from "./opportunityScales";
 import { applyDDScores } from "./ddScore";
-import { getPlayerPhotoIndexIfReady, lookupPlayerPhoto, getSleeperBioIndexIfReady, lookupPlayerBio, type PlayerBio } from "./playerPhotos";
-import { getEspnNflPhotosIfReady } from "./espnNflPhotos";
+import { isInactiveSleeperPhoto, getPlayerPhotoIndexIfReady, lookupPlayerPhoto, getSleeperBioIndexIfReady, lookupPlayerBio, type PlayerBio } from "./playerPhotos";
+import { getEspnNflPhotosIfReady, getEspnNflBios } from "./espnNflPhotos";
 import { getCollegePhotoIndexIfReady, lookupCollegePhoto, getSchoolLogoIndex, matchKey as matchKeyForLog, getCollegeBioIndexIfReady, lookupCollegeBio } from "./collegePhotos";
 import { reportStatus, reportHealthEvent } from "./systemStatus";
 import { maybeRefreshScoreSnapshot } from "./trending";
@@ -611,7 +611,9 @@ export function assignProspectPhotos(
   bioIndex: Map<string, PlayerBio>,
   collegeBioIndex: Map<string, PlayerBio>,
   /** ESPN NFL headshots (normalized name -> URL) for drafted players Sleeper no longer lists. */
-  espnFallbackIndex: Map<string, string> = new Map()
+  espnFallbackIndex: Map<string, string> = new Map(),
+  /** ESPN height/weight (normalized name -> bio), used only to fill gaps. */
+  espnBioIndex: Map<string, PlayerBio> = new Map()
 ): void {
   if (prospects.length > 50 && !prospects.some((p) => p.hasDraftData === true)) {
     console.error(
@@ -630,12 +632,21 @@ export function assignProspectPhotos(
       }
       continue;
     }
-    const photo = lookupPlayerPhoto(photoIndex, p.name, p.position) ?? espnFallbackIndex.get(matchKeyForLog(p.name));
+    const sleeperPhoto = lookupPlayerPhoto(photoIndex, p.name, p.position);
+    const espnPhoto = espnFallbackIndex.get(matchKeyForLog(p.name));
+    // A Sleeper image for a player with no team is frequently a dead link,
+    // so a verified ESPN headshot wins over it.
+    const photo = sleeperPhoto && !isInactiveSleeperPhoto(sleeperPhoto) ? sleeperPhoto : espnPhoto ?? sleeperPhoto;
     if (photo) p.photoUrl = photo;
     const bio = lookupPlayerBio(bioIndex, p.name, p.position);
     if (bio) {
       if (bio.heightIn !== undefined) p.heightIn = bio.heightIn;
       if (bio.weightLbs !== undefined) p.weightLbs = bio.weightLbs;
+    }
+    const espnBio = espnBioIndex.get(matchKeyForLog(p.name));
+    if (espnBio) {
+      if (p.heightIn === undefined && espnBio.heightIn !== undefined) p.heightIn = espnBio.heightIn;
+      if (p.weightLbs === undefined && espnBio.weightLbs !== undefined) p.weightLbs = espnBio.weightLbs;
     }
   }
 }
@@ -1386,10 +1397,15 @@ async function fetchLiveSheetData(): Promise<SheetData> {
   // Resolved in the background; whatever is already cached is used now.
   const espnFallbackIndex = getEspnNflPhotosIfReady(
     prospects
-      .filter((p) => p.hasDraftData === true && !lookupPlayerPhoto(photoIndex, p.name, p.position))
+      .filter((p) => {
+        if (p.hasDraftData !== true) return false;
+        const sp = lookupPlayerPhoto(photoIndex, p.name, p.position);
+        const sb = lookupPlayerBio(bioIndex, p.name, p.position);
+        return !sp || isInactiveSleeperPhoto(sp) || sb?.heightIn === undefined || sb?.weightLbs === undefined;
+      })
       .map((p) => ({ name: p.name, position: p.position }))
   );
-  assignProspectPhotos(prospects, photoIndex, collegePhotoIndex, bioIndex, collegeBioIndex, espnFallbackIndex);
+  assignProspectPhotos(prospects, photoIndex, collegePhotoIndex, bioIndex, collegeBioIndex, espnFallbackIndex, getEspnNflBios());
   assignSchoolLogos(prospects, logoIndex);
   // Targeted diagnostic for specific players confirmed to be matched
   // (present with a real photoUrl here) but still reported as showing

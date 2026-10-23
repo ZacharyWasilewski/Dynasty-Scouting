@@ -101,6 +101,7 @@ async function fetchPhotoIndex(): Promise<{ photoIndex: Map<string, string>; byI
   // same ~5MB response already being fetched for photos; there was
   // never a reason to scrape a separate source for this.
   const bio = new Map<string, PlayerBio>();
+  const inactive = new Set<string>();
   try {
     const res = await fetch("https://api.sleeper.app/v1/players/nfl", {
       next: { revalidate: REVALIDATE_SECONDS },
@@ -125,6 +126,8 @@ async function fetchPhotoIndex(): Promise<{ photoIndex: Map<string, string>; byI
       if (!name) continue;
       const url = `https://sleepercdn.com/content/nfl/players/${player.player_id}.jpg`;
       const isActive = Boolean(player.team);
+      // Retired players keep a Sleeper id but their image usually 404s.
+      if (!isActive) inactive.add(url);
 
       // Two different Sleeper players can share the exact same
       // name+position (a real, if uncommon, collision — e.g. a
@@ -179,7 +182,14 @@ async function fetchPhotoIndex(): Promise<{ photoIndex: Map<string, string>; byI
     // indistinguishable from expected first-load latency.
     console.error("[player-photos] Sleeper fetch failed:", err);
   }
+  inactiveSleeperUrls = inactive;
   return { photoIndex: index, byIdIndex: byId, bioIndex: bio };
+}
+
+let inactiveSleeperUrls = new Set<string>();
+/** True when a Sleeper headshot URL belongs to a player with no current team (often a dead image). */
+export function isInactiveSleeperPhoto(url: string | undefined): boolean {
+  return !!url && inactiveSleeperUrls.has(url);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {

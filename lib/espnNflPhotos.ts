@@ -33,9 +33,10 @@ const MISS_TTL_MS = 60 * 60 * 1000;
 const CONCURRENCY = 4;
 const TIMEOUT_MS = 6000;
 
-type CacheEntry = { url: string | null; expires: number };
+type CacheEntry = { url: string | null; heightIn?: number; weightLbs?: number; expires: number };
 const cache = new Map<string, CacheEntry>();
 let inFlight: Promise<void> | null = null;
+let missLogged = 0;
 
 interface SearchItem {
   id?: string | number;
@@ -104,7 +105,23 @@ function toCandidates(items: SearchItem[], key: string): Candidate[] {
   return out;
 }
 
-async function resolveOne(name: string, position: string): Promise<{ url: string | null; outcome: Outcome }> {
+type Resolved = { url: string | null; outcome: Outcome; heightIn?: number; weightLbs?: number };
+
+async function fetchBio(id: string, leagueId: string): Promise<{ heightIn?: number; weightLbs?: number }> {
+  const sport = leagueId === "28" ? "nfl" : "college-football";
+  const res = await fetchWithTimeout(`https://site.web.api.espn.com/apis/common/v3/sports/football/${sport}/athletes/${id}`);
+  if (!res || !res.ok) return {};
+  try {
+    const json = (await res.json()) as { athlete?: { height?: number; weight?: number } };
+    const h = Number(json.athlete?.height);
+    const w = Number(json.athlete?.weight);
+    return { heightIn: h >= 60 && h <= 90 ? Math.round(h) : undefined, weightLbs: w >= 140 && w <= 400 ? Math.round(w) : undefined };
+  } catch {
+    return {};
+  }
+}
+
+async function resolveOne(name: string, position: string): Promise<Resolved> {
   const key = matchKey(name);
   let anySearchOk = false;
   let candidates: Candidate[] = [];
@@ -145,13 +162,14 @@ async function resolveOne(name: string, position: string): Promise<{ url: string
   const url = headshotUrl(chosen.id, chosen.leagueId);
   const img = await fetchWithTimeout(url);
   if (img) void img.body?.cancel();
-  if (img && img.ok) return { url, outcome: "hit" };
+  const bio = await fetchBio(chosen.id, chosen.leagueId);
+  if (img && img.ok) return { url, outcome: "hit", ...bio };
   // Some athletes only have a headshot through ESPN's image combiner.
   const folder = chosen.leagueId === "28" ? "nfl" : "college-football";
   const combiner = `https://a.espncdn.com/combiner/i?img=/i/headshots/${folder}/players/full/${chosen.id}.png&w=350&h=254`;
   const img2 = await fetchWithTimeout(combiner);
   if (img2) void img2.body?.cancel();
-  return img2 && img2.ok ? { url: combiner, outcome: "hit" } : { url: null, outcome: "image-missing" };
+  return img2 && img2.ok ? { url: combiner, outcome: "hit", ...bio } : { url: null, outcome: "image-missing", ...bio };
 }
 
 async function fillCache(targets: { name: string; position: string }[]): Promise<void> {
@@ -160,14 +178,20 @@ async function fillCache(targets: { name: string; position: string }[]): Promise
     await Promise.all(
       batch.map(async ({ name, position }) => {
         let url: string | null = null;
+        let bio: { heightIn?: number; weightLbs?: number } = {};
         try {
           const result = await resolveOne(name, position);
           url = result.url;
+          bio = { heightIn: result.heightIn, weightLbs: result.weightLbs };
+          if (result.outcome !== "hit" && missLogged < 40) {
+            missLogged++;
+            console.error(`[espn-nfl-photos] ${result.outcome}: ${name} (${position})`);
+          }
           outcomeCounts[result.outcome]++;
         } catch {
           outcomeCounts["search-failed"]++;
         }
-        cache.set(matchKey(name), { url, expires: Date.now() + (url ? HIT_TTL_MS : MISS_TTL_MS) });
+        cache.set(matchKey(name), { url, ...bio, expires: Date.now() + (url ? HIT_TTL_MS : MISS_TTL_MS) });
       })
     );
   }
@@ -201,4 +225,13 @@ export function getEspnNflPhotosIfReady(players: { name: string; position: strin
     });
   }
   return result;
+}
+
+/** Height/weight ESPN reported for players already resolved (normalized name -> bio). */
+export function getEspnNflBios(): Map<string, { heightIn?: number; weightLbs?: number }> {
+  const out = new Map<string, { heightIn?: number; weightLbs?: number }>();
+  for (const [key, e] of cache) {
+    if (e.heightIn !== undefined || e.weightLbs !== undefined) out.set(key, { heightIn: e.heightIn, weightLbs: e.weightLbs });
+  }
+  return out;
 }
