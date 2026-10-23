@@ -5,7 +5,7 @@ import { DialogSurface } from "@/components/ui/DialogSurface";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { X, Users, User } from "@/components/ui/SiteIcons";
+import { X, Users, User, CheckCircle2, XCircle } from "@/components/ui/SiteIcons";
 import { findSimilarProspects, isResolved } from "@/lib/similarProspects";
 import { SchoolLogo } from "@/components/ui/SchoolLogo";
 import { ComparisonPanel } from "@/components/comparison/ComparisonPanel";
@@ -37,6 +37,19 @@ function ComparisonThumb({ prospect, size }: { prospect: Prospect; size: number 
         <User className="h-1/2 w-1/2 text-ink-tertiary" strokeWidth={1.5} />
       )}
     </div>
+  );
+}
+
+/** Small hit/miss marker showing how a comparable player actually panned out.
+ *  Nothing is shown for unresolved or push (RP) outcomes. */
+function OutcomeIcon({ prospect }: { prospect: Prospect }) {
+  if (prospect.hitMiss !== "HIT" && prospect.hitMiss !== "MISS") return null;
+  const hit = prospect.hitMiss === "HIT";
+  const label = hit ? "Hit: this player panned out" : "Miss: this player did not pan out";
+  return (
+    <span className={hit ? "text-riser" : "text-faller"} title={label} role="img" aria-label={label}>
+      {hit ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+    </span>
   );
 }
 
@@ -127,18 +140,21 @@ export function PlayerComparison({
               </p>
             </div>
           </div>
-          <span
-            className="shrink-0 font-headline text-3xl leading-none"
-            style={{ color: featuredTier ? getTierColor(featuredTier) : undefined }}
-          >
-            {scoreAtStage(featured, sharedScoreStage(current, featured), format)?.toFixed(1) ?? "—"}
+          <span className="flex shrink-0 items-center gap-2">
+            <OutcomeIcon prospect={featured} />
+            <span
+              className="font-headline text-3xl leading-none"
+              style={{ color: featuredTier ? getTierColor(featuredTier) : undefined }}
+            >
+              {scoreAtStage(featured, sharedScoreStage(current, featured), format)?.toFixed(1) ?? "—"}
+            </span>
           </span>
         </button>
       )}
 
       {rest.length > 0 && (
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {rest.map((p, index) => {
+          {rest.map((p) => {
           // Scores follow the current player's comparison regime, not the
           // matched player's present-day draft status. For a pre-draft
           // profile, historical matches intentionally show their
@@ -152,7 +168,7 @@ export function PlayerComparison({
             <button
               key={p.id}
               onClick={() => setComparing(p)}
-              className={`group items-center justify-between gap-3 border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-accent/40 hover:bg-surface-raised ${index >= 2 ? "hidden lg:flex" : "flex"}`}
+              className="group flex items-center justify-between gap-3 border border-border bg-surface p-4 text-left transition-colors duration-150 hover:border-accent/40 hover:bg-surface-raised"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <ComparisonThumb prospect={p} size={36} />
@@ -163,11 +179,14 @@ export function PlayerComparison({
                   </p>
                 </div>
               </div>
-              <span
-                className="shrink-0 font-mono text-sm font-semibold"
-                style={{ color: rowTier ? getTierColor(rowTier) : undefined }}
-              >
-                {score?.toFixed(1) ?? "—"}
+              <span className="flex shrink-0 items-center gap-2">
+                <OutcomeIcon prospect={p} />
+                <span
+                  className="font-mono text-sm font-semibold"
+                  style={{ color: rowTier ? getTierColor(rowTier) : undefined }}
+                >
+                  {score?.toFixed(1) ?? "—"}
+                </span>
               </span>
             </button>
           );
