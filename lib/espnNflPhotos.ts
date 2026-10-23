@@ -91,8 +91,10 @@ function toCandidates(items: SearchItem[], key: string): Candidate[] {
     if (!display || matchKey(display) !== key) continue;
     if (item.sport && item.sport !== "football") continue;
     const uid = String(item.uid ?? "");
-    const id = item.id !== undefined ? String(item.id) : /~a:(\d+)/.exec(uid)?.[1];
-    if (!id || !/^\d+$/.test(id)) continue;
+    // The numeric athlete id lives in the uid ("s:20~l:28~a:13208"); the
+    // item's own `id` is a GUID in the v2 search response.
+    const id = /~a:(\d+)/.exec(uid)?.[1] ?? (item.id !== undefined && /^\d+$/.test(String(item.id)) ? String(item.id) : undefined);
+    if (!id) continue;
     // Skip anything that isn't an athlete (teams, articles, etc.).
     if (uid && !uid.includes("~a:")) continue;
     const leagueId = /~l:(\d+)/.exec(uid)?.[1] ?? (item.league === "nfl" ? "28" : "");
@@ -143,7 +145,13 @@ async function resolveOne(name: string, position: string): Promise<{ url: string
   const url = headshotUrl(chosen.id, chosen.leagueId);
   const img = await fetchWithTimeout(url);
   if (img) void img.body?.cancel();
-  return img && img.ok ? { url, outcome: "hit" } : { url: null, outcome: "image-missing" };
+  if (img && img.ok) return { url, outcome: "hit" };
+  // Some athletes only have a headshot through ESPN's image combiner.
+  const folder = chosen.leagueId === "28" ? "nfl" : "college-football";
+  const combiner = `https://a.espncdn.com/combiner/i?img=/i/headshots/${folder}/players/full/${chosen.id}.png&w=350&h=254`;
+  const img2 = await fetchWithTimeout(combiner);
+  if (img2) void img2.body?.cancel();
+  return img2 && img2.ok ? { url: combiner, outcome: "hit" } : { url: null, outcome: "image-missing" };
 }
 
 async function fillCache(targets: { name: string; position: string }[]): Promise<void> {

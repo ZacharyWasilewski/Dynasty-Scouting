@@ -133,11 +133,15 @@ async function fetchNamedTabRowsUncached(sheetName: string, attempt = 1): Promis
       await new Promise((r) => setTimeout(r, attempt * 600));
       return fetchNamedTabRowsUncached(sheetName, attempt + 1);
     }
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[sheet] Tab "${sheetName}" fetch failed with HTTP ${res.status}`);
+      return [];
+    }
     const text = await res.text();
     const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false });
     return parsed.data;
-  } catch {
+  } catch (err) {
+    console.error(`[sheet] Tab "${sheetName}" fetch threw: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }
@@ -1289,6 +1293,9 @@ async function fetchLiveSheetData(): Promise<SheetData> {
   const masterProspects = parseProspects(rows);
   const future2027 = parseFutureClassTab(rows2027, "2027");
   const future2028 = parseFutureClassTab(rows2028, "2028");
+  // Loud, one-line record of what the future-class tabs produced, so a class
+  // that goes missing can be diagnosed from the logs.
+  console.error(`[sheet] future class tabs: 2027 = ${rows2027.length} rows -> ${future2027.length} prospects; 2028 = ${rows2028.length} rows -> ${future2028.length} prospects`);
 
   // Don't duplicate a prospect who's already in the master table
   // under the same name + class (e.g. once they're fully graded).
