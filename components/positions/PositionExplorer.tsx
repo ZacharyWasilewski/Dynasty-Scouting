@@ -18,7 +18,7 @@ import { SchoolLogo } from "@/components/ui/SchoolLogo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterSelect } from "@/components/rankings/FilterSelect";
 import { ScoreTypeSelect } from "@/components/rankings/ScoreTypeSelect";
-import { SCORE_TYPE_LABELS, parseScoreType, scoreForType, type ScoreType } from "@/lib/scoreType";
+import { STAGE_SHORT_LABELS, autoStageFor, describeScoreType, parseScoreType, scoreForType, type ScoreType } from "@/lib/scoreType";
 import { Pagination } from "@/components/rankings/Pagination";
 import { ALL_TIERS, getDisplayedPreDraftScore } from "@/lib/prospects";
 import { getDDScore, getDDTier, buildRanksWithinCollection, type LeagueFormat } from "@/lib/ddScore";
@@ -70,7 +70,7 @@ function DeltaIndicator({ delta }: { delta: number | undefined }) {
   );
 }
 
-function sortValue(p: Prospect, key: SortKey, format: LeagueFormat, rankMap: Map<string, number> | null, scoreType: ScoreType = "dd"): string | number {
+function sortValue(p: Prospect, key: SortKey, format: LeagueFormat, rankMap: Map<string, number> | null, scoreType: ScoreType = "auto"): string | number {
   switch (key) {
     case "rank":
       return rankMap?.get(p.id) ?? Number.POSITIVE_INFINITY;
@@ -81,9 +81,9 @@ function sortValue(p: Prospect, key: SortKey, format: LeagueFormat, rankMap: Map
     case "preDraftScore":
       return getDisplayedPreDraftScore(p, format) ?? -1;
     case "score":
-      return scoreType === "dd" ? getDDScore(p, format) ?? -1 : scoreForType(p, scoreType, format) ?? -1;
+      return scoreType === "auto" ? getDDScore(p, format) ?? getDisplayedPreDraftScore(p, format) ?? -1 : scoreForType(p, scoreType, format) ?? -1;
     case "tier": {
-      const t = scoreType === "dd" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format));
+      const t = scoreType === "auto" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format));
       return t ? TIER_ORDER[t] : 99;
     }
     case "draftClass":
@@ -137,7 +137,7 @@ export function PositionExplorer({
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   // Tier (colors, badge, filter) follows whichever score type is selected.
   const tierFor = (p: Prospect): Tier | undefined =>
-    scoreType === "dd" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format));
+    scoreType === "auto" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(initialSortDir);
   const [page, setPage] = useState(() => {
     const n = urlPage ? Number(urlPage) : 1;
@@ -159,16 +159,22 @@ export function PositionExplorer({
       if (q && !p.name.toLowerCase().includes(q) && !school.includes(q))
         return false;
       if (draftClass !== "all" && p.draftClass !== draftClass) return false;
-      if (tier !== "all" && (scoreType === "dd" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format))) !== tier) return false;
+      if (tier !== "all" && (scoreType === "auto" ? getDDTier(p, format) : getTierForScore(scoreForType(p, scoreType, format))) !== tier) return false;
       return true;
     });
   }, [prospects, query, draftClass, tier, format, scoreType]);
 
-  // Label the column from the actual sheet state: if every displayed
-  // prospect is missing either real ADP or OPP, the value is a Pre-Draft
-  // Score. Completed/resolved rows use POS Score.
-  const isPreDraftView = filtered.length > 0 && filtered.every((p) => !p.hasDraftData);
-  const scoreColumnLabel = isPreDraftView ? "Pre-Draft Score" : "DD Score";
+  // Column/selector labels come from the full list, so they stay stable when
+  // a filter returns zero rows, and they name the score actually shown.
+  const scoreDescription = describeScoreType(prospects, scoreType);
+  const scoreColumnLabel = scoreDescription.columnLabel;
+  const autoSelectorHint = scoreDescription.mixed
+    ? scoreDescription.stagesShown.map((st) => STAGE_SHORT_LABELS[st]).join(" / ") + " by row"
+    : scoreDescription.columnLabel;
+  const stageTag = (p: Prospect): string | null =>
+    scoreType === "auto" && scoreDescription.mixed ? STAGE_SHORT_LABELS[autoStageFor(p)] : null;
+  const unavailableText = (p: Prospect): string =>
+    scoreType !== "auto" && scoreForType(p, scoreType, format) === undefined ? "N/A" : "—";
 
   // Rank within just this position's own prospect pool (1, 2, 3...),
   // matching how draft-class pages rank within that class rather than
@@ -225,13 +231,13 @@ export function PositionExplorer({
   // sorts the list by it; going back to DD Score restores the model rank order.
   function handleScoreTypeChange(next: ScoreType) {
     setScoreType(next);
-    const nextKey: SortKey = next === "dd" ? "rank" : "score";
+    const nextKey: SortKey = next === "auto" ? "rank" : "score";
     const nextDir = DEFAULT_DIR[nextKey];
     setSortKey(nextKey);
     setSortDir(nextDir);
     setPage(1);
     replaceListingParams((params) => {
-      if (next === "dd") params.delete("scoreType");
+      if (next === "auto") params.delete("scoreType");
       else params.set("scoreType", next);
       if (nextKey === "rank") params.delete("sort");
       else params.set("sort", nextKey);
@@ -356,7 +362,7 @@ export function PositionExplorer({
           </div>
 
 
-          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} />
+          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoDescription={autoSelectorHint} />
           <FilterSelect
             label="Filter by draft class"
             value={draftClass}
@@ -444,7 +450,7 @@ export function PositionExplorer({
                 <SortTh label="Rank" sortKeyName="rank" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="w-9 px-1.5 text-left sm:w-16 sm:px-4" />
                 <SortTh label="Player" sortKeyName="name" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="min-w-[96px] px-1.5 text-left sm:min-w-[200px] sm:px-4" />
                 <SortTh label="School" sortKeyName="school" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="hidden px-2 text-left sm:table-cell sm:px-4" />
-                <SortTh label={scoreType === "dd" ? scoreColumnLabel : SCORE_TYPE_LABELS[scoreType]} sortKeyName="score" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="px-1.5 text-right sm:px-4" />
+                <SortTh label={scoreColumnLabel} sortKeyName="score" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="px-1.5 text-right sm:px-4" />
                 <SortTh label="Tier" sortKeyName="tier" sortKey={sortKey} sortDir={sortDir} handleSort={handleSort} theme={theme} className="px-1.5 text-left sm:px-4" />
               </tr>
             </thead>
@@ -476,16 +482,17 @@ export function PositionExplorer({
                     </span>
                   </td>
                   <td className="px-1.5 py-4 text-right font-data font-semibold sm:px-4" style={{ color: currentTier ? getTierColor(currentTier) : undefined }}>
-                    {(scoreType === "dd"
+                    {(scoreType === "auto"
                       ? getDDScore(p, format) ?? getDisplayedPreDraftScore(p, format)
-                      : scoreForType(p, scoreType, format))?.toFixed(1) ?? "—"}
-                    {scoreType === "dd" && <DeltaIndicator delta={scoreDeltas[p.id]} />}
+                      : scoreForType(p, scoreType, format))?.toFixed(1) ?? unavailableText(p)}
+                    {stageTag(p) && <span className="ml-1 text-[10px] font-semibold uppercase text-ink-tertiary">{stageTag(p)}</span>}
+                    {scoreType === "auto" && <DeltaIndicator delta={scoreDeltas[p.id]} />}
                   </td>
                   <td className="whitespace-nowrap px-1.5 py-4 sm:px-4">
                     {currentTier ? (
                       <TierBadge
                         tier={currentTier}
-                        perfectScore={(scoreType === "dd" ? getDDScore(p, format) : scoreForType(p, scoreType, format)) === 100}
+                        perfectScore={(scoreType === "auto" ? getDDScore(p, format) : scoreForType(p, scoreType, format)) === 100}
                       />
                     ) : (
                       "—"
@@ -533,13 +540,14 @@ export function PositionExplorer({
                         this falls back to the real Pre-Draft Score
                         instead of "TBD", the desktop table has a
                         separate column for it, mobile doesn't. */}
-                    {(scoreType === "dd"
+                    {(scoreType === "auto"
                       ? getDDScore(p, format) ?? getDisplayedPreDraftScore(p, format)
-                      : scoreForType(p, scoreType, format))?.toFixed(1) ?? "—"}
+                      : scoreForType(p, scoreType, format))?.toFixed(1) ?? unavailableText(p)}
+                    {stageTag(p) && <span className="ml-1 text-[10px] font-semibold uppercase text-ink-tertiary">{stageTag(p)}</span>}
                   </span>
                   <DeltaIndicator delta={scoreDeltas[p.id]} />
                   {currentTier ? (
-                    <TierBadge tier={currentTier} perfectScore={(scoreType === "dd" ? getDDScore(p, format) : scoreForType(p, scoreType, format)) === 100} />
+                    <TierBadge tier={currentTier} perfectScore={(scoreType === "auto" ? getDDScore(p, format) : scoreForType(p, scoreType, format)) === 100} />
                   ) : (
                     <span className="text-xs text-ink-tertiary">—</span>
                   )}

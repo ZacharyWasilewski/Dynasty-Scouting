@@ -33,36 +33,16 @@ export default async function ClassYearPage({ params }: { params: { year: string
   return (
     <main>
       <section className="border-b border-border bg-surface">
-        <Container className="flex flex-col gap-6 py-10 sm:py-12 lg:flex-row lg:items-end lg:justify-between">
-          {/* Previous version split this into three separate small
-              elements bolted onto the headline: a boxed icon chip, a
-              tiny tracked-out mono-caps caption in accent blue, and a
-              bordered accent "pill" badge off to the side for the
-              prospect count — each on its own, a common generic-SaaS
-              pattern (icon chip + eyebrow label + metric badge) that
-              doesn't match the boldness of the site's actual display
-              type. Rebuilt so one typeface — the same condensed
-              display face already doing the heavy lifting on "2027"
-              — carries the whole hero as a single composed moment:
-              the status line is now a second line of that same
-              headline face, not a foreign mono/caps/accent register,
-              and it's quiet ink-secondary rather than accent blue
-              since it's descriptive text, not a data value. The
-              prospect count is folded into the sentence itself
-              instead of sitting in its own bordered badge. */}
-          <div>
-            <p className="font-headline text-sm uppercase leading-none text-accent sm:text-base">
-              {status}
-            </p>
-            <h1 className="mt-2 font-headline text-6xl leading-none text-ink sm:text-8xl">
-              {params.year}
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-secondary">
-              {isEarlyWatch
-                ? `Prospects currently being tracked for the ${params.year} class. Full Pre-Draft Scores and tiers will appear once enough college data is available for evaluation.`
-                : `Every graded prospect from the ${params.year} class — ${prospects.length} in all — with class strength and tier distribution evaluated at the appropriate stage of the model.`}
-            </p>
+        <Container className="py-4 sm:py-5">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h1 className="font-headline text-4xl leading-none text-ink sm:text-5xl">{params.year}</h1>
+            <p className="font-headline text-sm uppercase leading-none text-accent sm:text-base">{status}</p>
           </div>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink-secondary sm:text-sm">
+            {isEarlyWatch
+              ? `Prospects currently being tracked for the ${params.year} class. Full Pre-Draft Scores and tiers will appear once enough college data is available.`
+              : `${prospects.length} graded prospects, scored at the appropriate stage of the model.`}
+          </p>
         </Container>
       </section>
 

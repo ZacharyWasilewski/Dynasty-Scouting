@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatFromParam, FORMAT_QUERY_PARAM, playerHref } from "@/lib/playerLinks";
+import { getGlobalFormat, parseFormatParam, reportFormatUsed } from "@/lib/globalFormat";
 import { useSearchParams, useRouter } from "next/navigation";
 import { type LeagueFormat } from "@/lib/ddScore";
 import { boardStorageKey, saveBoard } from "@/lib/boardSave";
@@ -27,6 +28,12 @@ export function BoardEditor({ prospects, classYear }: { prospects: Prospect[]; c
   const searchParams = useSearchParams();
   const [format, setFormat] = useState<LeagueFormat>(() => formatFromParam(searchParams.get("format")));
   const router = useRouter();
+  useEffect(() => {
+    if (parseFormatParam(searchParams.get("format"))) return;
+    setFormat(getGlobalFormat());
+    // Mount-only: adopt the saved preference when the URL has none.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { const params = new URLSearchParams(searchParams.toString()); params.set("format", FORMAT_QUERY_PARAM[format]); if (params.toString() !== searchParams.toString()) router.replace(`/board/${classYear}?${params}`, { scroll: false }); }, [classYear, format, router, searchParams]);
   const qb = format.startsWith("SUPERFLEX") ? "SUPERFLEX" : "1QB";
   const te = format.endsWith("TEP") ? "TEP" : "STANDARD";
@@ -365,7 +372,7 @@ export function BoardEditor({ prospects, classYear }: { prospects: Prospect[]; c
             <fieldset disabled={!!user && !boardReady} className="mt-2 border border-border bg-surface">
               <div className="flex flex-wrap items-center gap-3 border-b border-border p-3">
                 <input aria-label="Search board" placeholder="Find a player" value={boardSearch} onChange={e => setBoardSearch(e.target.value)} className="border border-border bg-surface p-2 text-base" />
-                <select disabled={savingOpportunityId !== null} aria-label="Board score format" value={format} onChange={e => { setPersonalizedScores({}); setFormat(e.target.value as LeagueFormat); }} className="border border-border bg-surface p-2 text-sm">{Object.keys(FORMAT_QUERY_PARAM).map(value => <option key={value} value={value}>{value.replace("SUPERFLEX", "Superflex").replace("_TEP", " · TEP")}</option>)}</select>
+                <select disabled={savingOpportunityId !== null} aria-label="Board score format" value={format} onChange={e => { setPersonalizedScores({}); setFormat(e.target.value as LeagueFormat); reportFormatUsed(e.target.value as LeagueFormat); }} className="border border-border bg-surface p-2 text-sm">{Object.keys(FORMAT_QUERY_PARAM).map(value => <option key={value} value={value}>{value.replace("SUPERFLEX", "Superflex").replace("_TEP", " · TEP")}</option>)}</select>
                 {previousOrder && <button onClick={() => { setOrder(previousOrder); setPreviousOrder(null); }}>Undo order change</button>}
               </div>
               {order.map((p, i) => {

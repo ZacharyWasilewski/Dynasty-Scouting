@@ -2,6 +2,7 @@
 
 import { DialogSurface } from "@/components/ui/DialogSurface";
 import { useState } from "react";
+import { useFormatQuery, withFormatParam } from "@/lib/useFormatQuery";
 import Link from "next/link";
 import {
   X,
@@ -51,6 +52,7 @@ const MODEL_LINKS = [
 ];
 
 export function MobileMoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const formatQuery = useFormatQuery();
   const { user, logout, loading: authLoading, error: authError, refresh } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -115,7 +117,7 @@ export function MobileMoreSheet({ open, onClose }: { open: boolean; onClose: () 
           {TOOL_LINKS.map((link) => (
             <Link
               key={link.label}
-              href={link.href}
+              href={withFormatParam(link.href, formatQuery)}
               onClick={handleLinkClick}
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-ink-secondary transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
             >
@@ -130,7 +132,7 @@ export function MobileMoreSheet({ open, onClose }: { open: boolean; onClose: () 
           {MODEL_LINKS.map((link) => (
             <Link
               key={link.label}
-              href={link.href}
+              href={withFormatParam(link.href, formatQuery)}
               onClick={handleLinkClick}
               className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-ink-secondary transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
             >

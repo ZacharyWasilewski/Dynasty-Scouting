@@ -12,7 +12,7 @@ vi.mock("next/link",()=>({default:({children,prefetch,...props}:any)=>React.crea
 vi.mock("next/image",()=>({default:({unoptimized,priority,fill,...props}:any)=>React.createElement("img",props)}));
 vi.mock("@/components/watchlist/WatchlistButton",()=>({WatchlistButton:()=>null}));
 vi.mock("@/components/auth/AuthProvider",()=>({useAuth:()=>({user:{id:"user"},loading:false})}));
-vi.mock("@/lib/globalFormat",()=>({getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
+vi.mock("@/lib/globalFormat",async (importActual)=>({...(await importActual<typeof import("@/lib/globalFormat")>()),getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
 vi.mock("@/lib/usePullToRefresh",()=>({usePullToRefresh:()=>({pullDistance:0,threshold:70,refreshing:false})}));
 vi.mock("@/lib/track",()=>({track:vi.fn()}));
 let host:HTMLDivElement;let root:Root;

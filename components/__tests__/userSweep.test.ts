@@ -10,7 +10,7 @@ const mocks=vi.hoisted(()=>({ params:new URLSearchParams("a=a&b=b&format=1qb-tep
 vi.mock("next/navigation",()=>({ useSearchParams:()=>mocks.params, useRouter:()=>({replace:mocks.replace}),usePathname:()=>"/compare" }));
 vi.mock("next/link",()=>({default:({children,href,prefetch,...props}:any)=>React.createElement("a",{href,...props},children)}));
 vi.mock("@/components/auth/AuthProvider",()=>({useAuth:()=>({user:mocks.user,loading:false})}));
-vi.mock("@/lib/globalFormat",()=>({getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
+vi.mock("@/lib/globalFormat",async (importActual)=>({...(await importActual<typeof import("@/lib/globalFormat")>()),getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
 let root:Root;let host:HTMLDivElement;
 beforeEach(()=>{vi.stubGlobal("React",React);vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);host=document.createElement("div");document.body.append(host);root=createRoot(host);mocks.replace.mockClear();});
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});

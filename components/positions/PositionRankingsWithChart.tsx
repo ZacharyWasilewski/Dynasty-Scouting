@@ -46,7 +46,9 @@ export function PositionRankingsWithChart({
       const restored = getSavedFormatForPath(pathname);
       if (restored) return restored;
     }
-    return getGlobalFormat();
+    // Same SSR-safe default as the other listing pages; the saved
+    // preference is adopted right after mount (effect below).
+    return "SUPERFLEX";
   });
   const [qbFormat, setQbFormat] = useState<"1QB" | "SUPERFLEX">(
     initialFormat === "SUPERFLEX" || initialFormat === "SUPERFLEX_TEP" ? "SUPERFLEX" : "1QB"
@@ -59,8 +61,15 @@ export function PositionRankingsWithChart({
 
   useEffect(() => {
     saveFormatForPath(pathname, format);
-    reportFormatUsed(format);
   }, [pathname, format]);
+
+  useEffect(() => {
+    if (wasRecentBackNavigation()) return;
+    const saved = getGlobalFormat();
+    setQbFormat(saved === "SUPERFLEX" || saved === "SUPERFLEX_TEP" ? "SUPERFLEX" : "1QB");
+    setTep(saved === "1QB_TEP" || saved === "SUPERFLEX_TEP");
+    // Mount-only: adopt the saved preference.
+  }, []);
 
   const hitRateByTier = useMemo(
     () => computeHitRateByTier(prospects, ALL_TIERS, theme.code, selectionFromLeagueFormat(format)),
@@ -132,8 +141,8 @@ export function PositionRankingsWithChart({
               theme={theme}
               qbFormat={qbFormat}
               tep={tep}
-              onQbFormatChange={setQbFormat}
-              onTepToggle={() => setTep((current) => !current)}
+              onQbFormatChange={(next) => { setQbFormat(next); reportFormatUsed(next === "SUPERFLEX" ? (tep ? "SUPERFLEX_TEP" : "SUPERFLEX") : (tep ? "1QB_TEP" : "1QB")); }}
+              onTepToggle={() => { const next = !tep; setTep(next); reportFormatUsed(qbFormat === "SUPERFLEX" ? (next ? "SUPERFLEX_TEP" : "SUPERFLEX") : (next ? "1QB_TEP" : "1QB")); }}
               scoreDeltas={scoreDeltas}
             />
           </div>

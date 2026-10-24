@@ -1,8 +1,8 @@
 "use client";
 
 import { evaluationStage, scopedRanks } from "@/lib/rankingScope";
-import { formatFromParam, FORMAT_QUERY_PARAM } from "@/lib/playerLinks";
-import { Suspense, Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { FORMAT_QUERY_PARAM } from "@/lib/playerLinks";
+import { Suspense, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { markProgrammaticScroll } from "@/lib/programmaticScroll";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -28,11 +28,11 @@ import { playerHref } from "@/lib/playerLinks";
 import { PhotoPrefetchTrigger } from "@/components/rankings/PhotoPrefetchTrigger";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
-import { wasRecentBackNavigation, getSavedFormatForPath, saveFormatForPath, VALID_FORMATS } from "@/lib/formatPersistence";
-import { getGlobalFormat, reportFormatUsed } from "@/lib/globalFormat";
+import { wasRecentBackNavigation, getSavedFormatForPath, saveFormatForPath } from "@/lib/formatPersistence";
+import { getGlobalFormat, reportFormatUsed, parseFormatParam } from "@/lib/globalFormat";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { ScoreTypeSelect } from "@/components/rankings/ScoreTypeSelect";
-import { SCORE_TYPE_LABELS, parseScoreType, scoreForType, type ScoreType } from "@/lib/scoreType";
+import { STAGE_SHORT_LABELS, autoStageFor, describeScoreType, parseScoreType, scoreForType, type ScoreType } from "@/lib/scoreType";
 import type { Position, Tier, Prospect } from "@/types/prospect";
 
 type SortKey =
@@ -81,10 +81,10 @@ function displayedRawScore(p: Prospect, format: LeagueFormat): number | undefine
   return applyFormatAdjustment(p.rawScore, p.position, format);
 }
 
-function displayedTier(p: Prospect, format: LeagueFormat, earlyWatchMode = false, scoreType: ScoreType = "dd"): Tier | undefined {
+function displayedTier(p: Prospect, format: LeagueFormat, earlyWatchMode = false, scoreType: ScoreType = "auto"): Tier | undefined {
   // A non-default score type is graded on its own value, so its colors and
   // tier labels follow that score instead of staying on the DD Score tier.
-  if (scoreType !== "dd") return getTierForScore(scoreForType(p, scoreType, format));
+  if (scoreType !== "auto") return getTierForScore(scoreForType(p, scoreType, format));
   return p.hasDraftData
     ? getDDTier(p, format)
     : getTierForScore(earlyWatchMode
@@ -211,14 +211,30 @@ function RankingsTableInner({
   // preference (see lib/globalFormat) instead of hardcoding 1QB —
   // that hardcoded reset was the actual complaint this replaces: a
   // Superflex player had to reselect it on every single page.
-  const [format, setFormat] = useState<LeagueFormat>(() => {
-    if (urlFormat) return (VALID_FORMATS as string[]).includes(urlFormat) ? urlFormat as LeagueFormat : formatFromParam(urlFormat);
+  const [format, setFormatState] = useState<LeagueFormat>(() => {
+    const explicit = parseFormatParam(urlFormat);
+    if (explicit) return explicit;
     if (wasRecentBackNavigation()) {
       const restored = getSavedFormatForPath(pathname);
       if (restored) return restored;
     }
-    return getGlobalFormat();
+    // Server and first client render both use the default; the saved
+    // preference is adopted right after mount (effect below).
+    return "SUPERFLEX";
   });
+  const userPickedFormat = useRef(false);
+  const setFormat = useCallback((next: LeagueFormat) => {
+    userPickedFormat.current = true;
+    setFormatState(next);
+    reportFormatUsed(next);
+  }, []);
+  useEffect(() => {
+    if (parseFormatParam(urlFormat) || wasRecentBackNavigation()) return;
+    const saved = getGlobalFormat();
+    if (saved !== format) setFormatState(saved);
+    // Mount-only: adopt the saved preference when nothing explicit is in the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Early-watch classes have no published DD ranks yet. Their Rank column must
   // therefore be the real class rank of the exact Raw Score currently shown,
   // including the active 1QB/Superflex/TEP adjustment. Keep this map separate
@@ -273,7 +289,6 @@ function RankingsTableInner({
   // every other page defaults to it going forward too.
   useEffect(() => {
     saveFormatForPath(pathname, format);
-    reportFormatUsed(format);
   }, [pathname, format]);
 
   useEffect(() => {
@@ -342,8 +357,8 @@ function RankingsTableInner({
         return sortDir === "asc" ? cmp : -cmp;
       }
       if (sortKey === "score") {
-        const av = (scoreType === "dd" ? displayedScore(a, format) : scoreForType(a, scoreType, format)) ?? -1;
-        const bv = (scoreType === "dd" ? displayedScore(b, format) : scoreForType(b, scoreType, format)) ?? -1;
+        const av = (scoreType === "auto" ? (earlyWatchMode ? displayedRawScore(a, format) : displayedScore(a, format)) : scoreForType(a, scoreType, format)) ?? -1;
+        const bv = (scoreType === "auto" ? (earlyWatchMode ? displayedRawScore(b, format) : displayedScore(b, format)) : scoreForType(b, scoreType, format)) ?? -1;
         const cmp = av < bv ? -1 : av > bv ? 1 : 0;
         return sortDir === "asc" ? cmp : -cmp;
       }
@@ -380,20 +395,23 @@ function RankingsTableInner({
   const safePage = Math.min(page, totalPages);
   const pageItems = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  // If the displayed prospects are still missing either real ADP or OPP,
-  // this column is the forward-looking Pre-Draft Score. Otherwise it is
-  // the completed positional score.
-  const isPreDraftView = filtered.length > 0 && filtered.every((p) => !p.hasDraftData);
-  // One score column: the selected score type (DD Score by default; raw /
-  // pre-draft where nothing has a DD Score yet).
-  const scoreColumnLabel = scoreType !== "dd"
-    ? SCORE_TYPE_LABELS[scoreType]
-    : earlyWatchMode ? "Raw Score" : isPreDraftView ? "Pre-Draft Score" : "DD Score";
-  const scoreSortKey: SortKey = scoreType === "dd" && earlyWatchMode ? "preDraftScore" : "score";
+  // One score column. The label comes from the full list (not the filtered
+  // one) so it stays stable when a filter returns zero rows, and it always
+  // names the score actually being shown. Lists that mix stages say so and
+  // tag every row.
+  const scoreDescription = describeScoreType(prospects, scoreType, earlyWatchMode);
+  const scoreColumnLabel = scoreDescription.columnLabel;
+  const autoSelectorHint = scoreDescription.mixed
+    ? scoreDescription.stagesShown.map((s) => STAGE_SHORT_LABELS[s]).join(" / ") + " by row"
+    : scoreDescription.columnLabel;
+  const scoreSortKey: SortKey = scoreType === "auto" && earlyWatchMode ? "preDraftScore" : "score";
   const scoreValue = (p: Prospect): number | undefined =>
-    scoreType !== "dd" ? scoreForType(p, scoreType, format)
-      : earlyWatchMode ? displayedRawScore(p, format)
-      : displayedScore(p, format);
+    scoreType === "auto" && earlyWatchMode ? displayedRawScore(p, format) : scoreForType(p, scoreType, format, earlyWatchMode);
+  const scoreStageTag = (p: Prospect): string | null =>
+    scoreType === "auto" && scoreDescription.mixed ? STAGE_SHORT_LABELS[autoStageFor(p, earlyWatchMode)] : null;
+  // Explicit score types that a prospect doesn't have render as unavailable
+  // rather than quietly showing some other score.
+  const unavailableText = (p: Prospect): string => (scoreType !== "auto" && scoreValue(p) === undefined ? "N/A" : "—");
   const showScores = true;
   // Pre-draft-only views hide the DD Score column, so a non-default score
   // type takes over the single score column instead.
@@ -413,13 +431,13 @@ function RankingsTableInner({
   // sorts the list by it; going back to DD Score restores the default order.
   function handleScoreTypeChange(next: ScoreType) {
     setScoreType(next);
-    const nextKey: SortKey = next === "dd" ? (earlyWatchMode ? "preDraftScore" : "rank") : "score";
+    const nextKey: SortKey = next === "auto" ? (earlyWatchMode ? "preDraftScore" : "rank") : "score";
     const nextDir = DEFAULT_DIR[nextKey];
     setSortKey(nextKey);
     setSortDir(nextDir);
     setPageState(1);
     replaceListingParams((params) => {
-      if (next === "dd") params.delete("scoreType");
+      if (next === "auto") params.delete("scoreType");
       else params.set("scoreType", next);
       if (nextKey === "rank" || (earlyWatchMode && nextKey === "preDraftScore")) params.delete("sort");
       else params.set("sort", nextKey);
@@ -577,7 +595,7 @@ function RankingsTableInner({
           </div>
 
 
-          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} />
+          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoDescription={autoSelectorHint} />
 
           <FilterSelect
             label="Filter by position"
@@ -861,8 +879,9 @@ function RankingsTableInner({
                             className="font-data text-base font-bold sm:text-lg"
                             style={{ color: currentTier ? getTierColor(currentTier) : undefined }}
                           >
-                            {scoreValue(p)?.toFixed(1) ?? "—"}
+                            {scoreValue(p)?.toFixed(1) ?? unavailableText(p)}
                           </span>
+                          {scoreStageTag(p) && <span className="ml-1 text-[10px] font-semibold uppercase text-ink-tertiary">{scoreStageTag(p)}</span>}
                         </td>
                       )}
                       {showScores && <td className="px-1.5 py-4 sm:px-4">{currentTier ? <TierBadge tier={currentTier} perfectScore={scoreValue(p) === 100} /> : "—"}</td>}
@@ -982,7 +1001,8 @@ function RankingsTableInner({
                             one number, so it needs to actually be a
                             number rather than falling back to "TBD"
                             with no score visible anywhere on mobile. */}
-                        {scoreValue(p)?.toFixed(1) ?? "—"}
+                        {scoreValue(p)?.toFixed(1) ?? unavailableText(p)}
+                        {scoreStageTag(p) && <span className="ml-1 text-[10px] font-semibold uppercase text-ink-tertiary">{scoreStageTag(p)}</span>}
                       </span>
                       {currentTier ? (
                         <TierBadge tier={currentTier} perfectScore={scoreValue(p) === 100} />

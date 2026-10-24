@@ -6,7 +6,7 @@ import { MockDraftExperience } from "@/components/mockDraft/MockDraftExperience"
 vi.mock("next/image",()=>({default:({unoptimized,fill,priority,...props}:any)=>React.createElement("img",props)}));
 vi.mock("next/link",()=>({default:({children,prefetch,...props}:any)=>React.createElement("a",props,children)}));
 vi.mock("@/components/auth/AuthProvider",()=>({useAuth:()=>({user:null,loading:false})}));
-vi.mock("@/lib/globalFormat",()=>({getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
+vi.mock("@/lib/globalFormat",async (importActual)=>({...(await importActual<typeof import("@/lib/globalFormat")>()),getGlobalFormat:()=>"SUPERFLEX",reportFormatUsed:vi.fn()}));
 vi.mock("@/lib/mockDraftSounds",()=>({playOnClockSound:vi.fn(),playPickSound:vi.fn(),playTickSound:vi.fn()}));
 vi.mock("@/lib/track",()=>({track:vi.fn()}));
 const prospects=Array.from({length:16},(_,i)=>({id:`p${i}`,name:`Player ${i}`,position:"WR" as const,draftClass:"2027",preDraftScore:90-i,hasDraftData:false}));

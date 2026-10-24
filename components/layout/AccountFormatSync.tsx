@@ -2,14 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { GLOBAL_FORMAT_EVENT, isValidFormat } from "@/lib/globalFormat";
 
 /**
- * Mounted once at the root layout. When the user is logged in, pulls
- * their saved account format preference for compatibility, but deliberately
- * does not apply it as the site-wide default. The product default is always
- * Superflex + Standard; individual page state is restored only when the
- * browser Back/Forward returns to that page. Runs once per login, not on every
- * navigation (this component itself never unmounts).
+ * Mounted once at the root layout. When the user is logged in, pulls their
+ * saved account format and adopts it only if this browser has no saved
+ * preference yet (a choice made on this device always wins). Explicit
+ * ?format= URLs still override both on the page they point at.
  */
 export function AccountFormatSync() {
   const { user } = useAuth();
@@ -21,11 +20,14 @@ export function AccountFormatSync() {
     fetch("/api/preferences/format")
       .then((res) => res.json())
       .then((data: { format: string | null }) => {
-        // The site-wide default is intentionally fixed to Superflex + Standard.
-        // Do not apply a saved account format globally here: page-level format
-        // state is restored only on genuine browser Back/Forward navigation,
-        // while fresh navigation always starts from the site default.
-        void data;
+        if (!isValidFormat(data.format)) return;
+        try {
+          if (localStorage.getItem("dd_global_format")) return;
+          localStorage.setItem("dd_global_format", data.format);
+          window.dispatchEvent(new CustomEvent(GLOBAL_FORMAT_EVENT, { detail: data.format }));
+        } catch {
+          // storage unavailable: nothing to sync into
+        }
       })
       .catch(() => {});
   }, [user]);

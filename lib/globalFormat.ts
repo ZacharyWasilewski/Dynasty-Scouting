@@ -4,20 +4,45 @@ const KEY = "dd_global_format";
 const VALID: LeagueFormat[] = ["1QB", "1QB_TEP", "SUPERFLEX", "SUPERFLEX_TEP"];
 export const GLOBAL_FORMAT_EVENT = "dd:format-change";
 
+export const DEFAULT_FORMAT: LeagueFormat = "SUPERFLEX";
+
 /**
- * The user's sticky format preference, read synchronously so a page's
- * format `useState` initializer can use it directly (no flash of the
- * wrong format on first paint). Falls back to "SUPERFLEX" for a genuinely
- * new visitor, same as before — the difference is this now persists
- * (localStorage, not sessionStorage) instead of resetting on every
- * fresh visit.
+ * Format precedence used everywhere on the site:
+ *   1. an explicit, valid ?format= in the URL (shared links, in-page links),
+ *   2. the user's saved preference (localStorage, written only when the user
+ *      actually picks a format),
+ *   3. Superflex with TEP off.
+ * This returns layers 2 and 3. Call it from an effect (not a render-time
+ * initializer) so the first client render matches the server render.
  */
 export function getGlobalFormat(): LeagueFormat {
-  // Site-wide default is always Superflex + Standard. Individual pages
-  // persist their own active selection separately so browser Back/Forward
-  // can restore the state that was actually active on that page without
-  // making a previous format choice silently become the default everywhere.
-  return "SUPERFLEX";
+  if (typeof window === "undefined") return DEFAULT_FORMAT;
+  try {
+    const raw = localStorage.getItem(KEY);
+    return isValidFormat(raw) ? raw : DEFAULT_FORMAT;
+  } catch {
+    return DEFAULT_FORMAT;
+  }
+}
+
+/** Layers 1-3 together, for callers that have the raw URL value in hand. */
+export function resolveFormat(urlValue: string | null | undefined): LeagueFormat {
+  const fromUrl = parseFormatParam(urlValue);
+  return fromUrl ?? getGlobalFormat();
+}
+
+const PARAM_TO_FORMAT: Record<string, LeagueFormat> = {
+  "1qb": "1QB",
+  sf: "SUPERFLEX",
+  "1qb-tep": "1QB_TEP",
+  "sf-tep": "SUPERFLEX_TEP",
+};
+
+/** Strict parse of a ?format= value; null when absent or unrecognized. */
+export function parseFormatParam(value: string | null | undefined): LeagueFormat | null {
+  if (!value) return null;
+  if (isValidFormat(value)) return value;
+  return PARAM_TO_FORMAT[value.toLowerCase()] ?? null;
 }
 
 /**

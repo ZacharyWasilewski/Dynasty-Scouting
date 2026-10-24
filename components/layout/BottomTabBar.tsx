@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Users, ClipboardList, Search, Menu } from "@/components/ui/SiteIcons";
 import { cn } from "@/lib/utils";
+import { useFormatQuery, withFormatParam } from "@/lib/useFormatQuery";
 import { useSearch } from "@/components/search/SearchProvider";
 import { MobileMoreSheet } from "@/components/layout/MobileMoreSheet";
 import { getMockDraftStep, MOCK_DRAFT_STEP_EVENT, type MockDraftStep } from "@/lib/mockDraftStep";
@@ -25,6 +26,7 @@ import { getMockDraftStep, MOCK_DRAFT_STEP_EVENT, type MockDraftStep } from "@/l
  * with real bottom padding of its own, same as everywhere else.
  */
 export function BottomTabBar() {
+  const formatQuery = useFormatQuery();
   const pathname = usePathname();
   const { setOpen: setSearchOpen } = useSearch();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -81,7 +83,7 @@ export function BottomTabBar() {
             return (
               <Link
                 key={tab.label}
-                href={tab.href}
+                href={withFormatParam(tab.href, formatQuery)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "m-1 flex flex-col items-center gap-1 rounded-lg py-1.5 text-[10px] font-medium transition-transform duration-100 active:scale-90",

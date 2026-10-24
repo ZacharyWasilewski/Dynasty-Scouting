@@ -18,6 +18,7 @@ import { getTierColor, getTierForScore, getOpportunityColor, qualitativeLabelFor
 import { subScoreSlug, subScoreDescription } from "@/lib/methodologySlugs";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { getGlobalFormat, reportFormatUsed } from "@/lib/globalFormat";
+import { FORMAT_QUERY_PARAM } from "@/lib/playerLinks";
 import { applyFormatAdjustment } from "@/lib/formatAdjustment";
 import { useProfileTabs } from "@/components/profile/ProfileTabsContext";
 import { ProfileTabPanel } from "@/components/profile/ProfileTabPanel";
@@ -173,7 +174,7 @@ export function ProfileHeader({
 
   const setFormat = (nextFormat: "1QB" | "1QB_TEP" | "SUPERFLEX" | "SUPERFLEX_TEP") => {
     const params = new URLSearchParams(searchParams.toString());
-    if (nextFormat === "SUPERFLEX") params.delete("format");
+    if (nextFormat === "SUPERFLEX") params.set("format", "sf");
     else if (nextFormat === "1QB") params.set("format", "1qb");
     else if (nextFormat === "1QB_TEP") params.set("format", "1qb-tep");
     else params.set("format", "sf-tep");
@@ -192,7 +193,12 @@ export function ProfileHeader({
   useEffect(() => {
     if (formatParam) return;
     const preferred = getGlobalFormat();
-    if (preferred !== "SUPERFLEX") setFormat(preferred);
+    if (preferred !== "SUPERFLEX") {
+      // Adopt the saved preference in the URL without re-saving it.
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("format", FORMAT_QUERY_PARAM[preferred]);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

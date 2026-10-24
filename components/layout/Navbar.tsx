@@ -13,6 +13,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useSearch } from "@/components/search/SearchProvider";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { cn } from "@/lib/utils";
+import { useFormatQuery, withFormatParam } from "@/lib/useFormatQuery";
 import { isProgrammaticScroll, refreshProgrammaticScroll, registerHeaderHiddenSetter } from "@/lib/programmaticScroll";
 
 /**
@@ -37,7 +38,7 @@ const NAV_GROUPS = [
   {
     label: "Tools",
     links: [
-      { label: "Compare", description: "Compare two prospects side by side", href: "/compare", icon: GitCompareArrows },
+      { label: "Compare", description: "Compare two same-position prospects", href: "/compare", icon: GitCompareArrows },
       { label: "Mock Draft", description: "Practice against the live board", href: "/mock-draft", icon: ClipboardList },
       // Was missing entirely from this dropdown while already present in
       // MobileMoreSheet's own, separately maintained Tools list — the same
@@ -59,6 +60,7 @@ const NAV_GROUPS = [
 
 export function Navbar({ featuredClassYear }: { featuredClassYear?: string }) {
   const pathname = usePathname();
+  const formatQuery = useFormatQuery();
   const navRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -176,8 +178,8 @@ export function Navbar({ featuredClassYear }: { featuredClassYear?: string }) {
 
   const isActive = (href: string) => href === "/" ? pathname === "/" : pathname.startsWith(href);
   const groupActive = (links: Array<{ href: string }>) => links.some((link) => isActive(link.href));
-  const featuredHref = featuredClassYear ? `/classes/${featuredClassYear}` : null;
-  const featuredActive = featuredHref ? pathname.startsWith(featuredHref) : false;
+  const featuredHref = featuredClassYear ? withFormatParam(`/classes/${featuredClassYear}`, formatQuery) : null;
+  const featuredActive = featuredClassYear ? pathname.startsWith(`/classes/${featuredClassYear}`) : false;
 
   return (
     <>
@@ -254,7 +256,7 @@ export function Navbar({ featuredClassYear }: { featuredClassYear?: string }) {
                           return (
                             <Link
                               key={link.label}
-                              href={link.href}
+                              href={withFormatParam(link.href, formatQuery)}
                               role="menuitem"
                               onClick={() => setOpenGroup(null)}
                               className={cn(

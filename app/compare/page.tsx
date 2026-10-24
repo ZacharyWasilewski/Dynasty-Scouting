@@ -8,7 +8,7 @@ import { PlayerPicker } from "@/components/comparison/PlayerPicker";
 import { ComparisonPanel } from "@/components/comparison/ComparisonPanel";
 import { FORMAT_QUERY_PARAM, formatFromParam } from "@/lib/playerLinks";
 import { cn } from "@/lib/utils";
-import { getGlobalFormat, reportFormatUsed } from "@/lib/globalFormat";
+import { getGlobalFormat, reportFormatUsed, parseFormatParam } from "@/lib/globalFormat";
 import type { LeagueFormat } from "@/lib/ddScore";
 import type { Prospect } from "@/types/prospect";
 
@@ -41,6 +41,13 @@ export default function ComparePage() {
     setFormatState(next);
     reportFormatUsed(next);
   }
+  // No explicit ?format= means: adopt the saved preference after mount.
+  useEffect(() => {
+    if (parseFormatParam(searchParams.get("format"))) return;
+    setFormatState(getGlobalFormat());
+    // Mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const isSuperflex = format === "SUPERFLEX" || format === "SUPERFLEX_TEP";
   const isTEP = format === "1QB_TEP" || format === "SUPERFLEX_TEP";
 
@@ -124,32 +131,37 @@ export default function ComparePage() {
     if (params.toString() !== searchParams.toString()) router.replace(`${pathname}?${params}`, { scroll: false });
   }, [playerA, playerB, format, restored, pathname, router, searchParams]);
 
+  const [clearedNotice, setClearedNotice] = useState("");
   function handleSelectA(p: Prospect | null) {
     setPlayerA(p);
-    if (!p || (playerB && playerB.position !== p.position)) setPlayerB(null);
+    if (playerB && (!p || playerB.position !== p.position)) {
+      // Player B can never stay selected across a position change.
+      setClearedNotice(p ? `Player B was cleared because Player A is now a ${p.position}. Choose another ${p.position}.` : "");
+      setPlayerB(null);
+    } else {
+      setClearedNotice("");
+    }
   }
 
   return (
     <main>
-      <section className="border-b border-border bg-grid-columns">
-        <Container className="flex flex-col items-start py-20 lg:py-24">
-          <span className="flex h-12 w-12 items-center justify-center border border-accent/40 bg-accent/10 text-accent">
-            <Users className="h-5 w-5" strokeWidth={1.75} />
-          </span>
-          <span className="mt-6 font-headline text-sm uppercase text-accent">
-            Player Comparison
-          </span>
-          <h1 className="mt-3 font-headline text-4xl uppercase leading-[0.95] tracking-tight text-ink sm:text-6xl">
-            Compare two same-position prospects.
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-secondary">
-            Pick two players at the same position to see how they stack up,
-            score for score.
+      <section className="border-b border-border bg-surface">
+        <Container className="py-4 sm:py-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-accent/40 bg-accent/10 text-accent">
+              <Users className="h-4 w-4" strokeWidth={1.75} />
+            </span>
+            <h1 className="font-headline text-2xl uppercase leading-none tracking-tight text-ink sm:text-3xl">
+              Compare two same-position prospects
+            </h1>
+          </div>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-ink-secondary sm:text-sm">
+            Pick Player A, then a Player B at the same position. Both are scored at a shared evaluation stage so the numbers are like-for-like.
           </p>
         </Container>
       </section>
 
-      <section className="py-14">
+      <section className="py-6 sm:py-8">
         <Container>
           {loading ? (
             <p className="text-sm text-ink-tertiary">Loading prospects…</p>
@@ -159,15 +171,8 @@ export default function ComparePage() {
             </p>
           ) : (
             <>
-              {!playerA && !playerB && (
-                <div className="mb-6 border border-border bg-surface p-5 sm:p-6">
-                  <p className="font-headline text-sm uppercase text-accent">Compare Prospects</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-secondary">Select two players at the same position to compare their scores and underlying signals at a shared evaluation stage.</p>
-                  <p className="mt-3 flex items-center gap-1.5 font-headline text-sm uppercase text-ink-tertiary"><ArrowRight className="h-3 w-3" /> Start with Player A below</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {clearedNotice && <p role="status" className="mb-3 border border-border bg-surface-raised px-3 py-2 text-xs text-ink-secondary">{clearedNotice}</p>}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 <PlayerPicker
                   label="Player A"
                   prospects={prospects}
@@ -181,12 +186,12 @@ export default function ComparePage() {
                   selected={playerB}
                   onSelect={setPlayerB}
                   disabled={!playerA}
-                  disabledHint="Select Player A first"
+                  disabledHint="Select Player A first. Player B must play the same position."
                 />
               </div>
 
               {playerA && playerB && (
-                <div className="mx-auto mt-12 w-full max-w-lg border border-border-strong bg-surface p-6 sm:p-8">
+                <div className="mx-auto mt-6 w-full max-w-lg border border-border-strong bg-surface p-6 sm:p-8">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-accent">
                       <Users className="h-4 w-4" strokeWidth={1.75} />

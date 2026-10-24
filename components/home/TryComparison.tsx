@@ -97,6 +97,12 @@ export function TryComparison({ defaultA, defaultB }: { defaultA?: Prospect; def
     setPlayerB((prev) => prev ? byId.get(prev.id) ?? null : (formatDefaults.b ? byId.get(formatDefaults.b.id) ?? null : defaultB ? byId.get(defaultB.id) ?? null : null));
   }, [prospects, defaultA, defaultB, formatDefaults]);
 
+  // Changing Player A can never leave an incompatible Player B selected.
+  function handleSelectA(next: Prospect | null) {
+    setPlayerA(next);
+    setPlayerB((prev) => (prev && next && prev.position === next.position ? prev : null));
+  }
+
   function randomize() {
     // Matches the established rule on the real /compare page — a
     // player's subscores are position-specific (the same label means
@@ -127,13 +133,13 @@ export function TryComparison({ defaultA, defaultB }: { defaultA?: Prospect; def
           <div className="max-w-2xl">
             <span className="font-headline text-sm uppercase text-accent">Try It</span>
             <h2 className="mt-3 font-headline text-4xl uppercase leading-[0.95] tracking-tight text-ink sm:text-5xl">
-              Compare any two
+              Compare two players
               <br />
-              players, right now.
+              at the same position.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-              This is the real comparison tool, not a preview of it, pick any two prospects and see exactly how the
-              model breaks them down.
+              This is the real comparison tool, not a preview of it. Pick Player A, then any Player B at the same
+              position, and see exactly how the model breaks them down at a shared evaluation stage.
             </p>
           </div>
           <Link
@@ -147,7 +153,7 @@ export function TryComparison({ defaultA, defaultB }: { defaultA?: Prospect; def
 
         <div className="mt-10 border border-border-strong bg-surface p-5 sm:p-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PlayerPicker label="Player A" prospects={prospects} selected={playerA} onSelect={setPlayerA} />
+            <PlayerPicker label="Player A" prospects={prospects} selected={playerA} onSelect={handleSelectA} />
             <PlayerPicker
               label="Player B"
               prospects={prospects}
@@ -155,7 +161,7 @@ export function TryComparison({ defaultA, defaultB }: { defaultA?: Prospect; def
               selected={playerB}
               onSelect={setPlayerB}
               disabled={!playerA}
-              disabledHint="Pick Player A first"
+              disabledHint="Pick Player A first. Player B must play the same position."
             />
           </div>
 
@@ -165,7 +171,7 @@ export function TryComparison({ defaultA, defaultB }: { defaultA?: Prospect; def
             </div>
           ) : (
             <p className="mt-8 border-t border-border pt-8 text-center text-sm text-ink-tertiary">
-              Pick two players above to compare them.
+              Pick two players at the same position to compare them.
             </p>
           )}
 

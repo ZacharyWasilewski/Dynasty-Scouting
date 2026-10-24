@@ -116,7 +116,7 @@ export function SavedMockDraftDetail({ id }: { id: string }) {
                       {pick.playerName}
                     </Link>
                     <p className="mt-0.5 text-[10px] text-ink-tertiary">
-                      {pick.position} · {pick.tier ?? "TBD"} · DD {pick.ddScore?.toFixed(1) ?? "TBD"}
+                      {pick.position} · {pick.tier ?? "TBD"} · {draft.settings.fullBoard?.find((b) => b.playerId === pick.playerId)?.scoreLabel ?? "Score"} {pick.ddScore?.toFixed(1) ?? "TBD"}
                     </p>
                   </div>
                   <div className={`font-data text-lg font-bold ${gradeTone(pick.grade)}`}>{pick.grade}</div>

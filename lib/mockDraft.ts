@@ -461,3 +461,39 @@ export function computeDDValueCaptured(
   }
   return optimal ? Math.min(100, actual / optimal * 100) : 0;
 }
+
+/** Max rounds a mock draft runs. */
+export const MOCK_MAX_ROUNDS = 4;
+
+/** True once every pick the draft will ever make has been made. */
+export function isDraftComplete(pickCount: number, prospectCount: number, teams: number, rounds = MOCK_MAX_ROUNDS): boolean {
+  return pickCount >= Math.min(prospectCount, teams * rounds);
+}
+
+/**
+ * The queue a user can actually act on: queued players who are still on the
+ * board, in queue order. The badge, the queue list and the "queued" markers
+ * must all read this, never the raw queued-id list.
+ */
+export function availableQueue(queue: readonly string[], availableIds: ReadonlySet<string>): string[] {
+  return queue.filter((id) => availableIds.has(id));
+}
+
+/**
+ * The name of the score a mock draft is actually evaluated with, derived from
+ * the prospects on the board: DD Score once the class has draft data,
+ * Pre-Draft Score while it doesn't, and a neutral "Model Score" if a board
+ * mixes both. This is separate from the computer-pick engine (Dynasty
+ * Database ranks vs. community market rankings).
+ */
+export function mockScoreName(prospects: Iterable<Pick<Prospect, "hasDraftData">>): { short: "DD" | "Pre-Draft" | "Model"; long: "DD Score" | "Pre-Draft Score" | "Model Score" } {
+  let drafted = 0;
+  let total = 0;
+  for (const p of prospects) {
+    total++;
+    if (p.hasDraftData === true) drafted++;
+  }
+  if (total > 0 && drafted === total) return { short: "DD", long: "DD Score" };
+  if (drafted === 0) return { short: "Pre-Draft", long: "Pre-Draft Score" };
+  return { short: "Model", long: "Model Score" };
+}

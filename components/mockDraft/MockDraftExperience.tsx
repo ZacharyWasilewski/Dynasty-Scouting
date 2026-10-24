@@ -45,6 +45,8 @@ import {
   getTierForFormat,
   normalizePlayerName,
   weightedRandomPick,
+  isDraftComplete,
+  availableQueue,
 } from "@/lib/mockDraft";
 import { cn } from "@/lib/utils";
 import { getGlobalFormat, reportFormatUsed } from "@/lib/globalFormat";
@@ -418,8 +420,10 @@ export function MockDraftExperience({
   // this draft session (not persisted/synced anywhere) since a queue
   // is inherently specific to one draft's context, not something that
   // should carry over or sync across different drafts.
-  const [queue, setQueue] = useState<string[]>([]);
+  const [queueIds, setQueue] = useState<string[]>([]);
+  const [queueNotice, setQueueNotice] = useState("");
   const toggleQueued = useCallback((playerId: string) => {
+    setQueueNotice("");
     setQueue((prev) => (prev.includes(playerId) ? prev.filter((id) => id !== playerId) : [...prev, playerId]));
   }, []);
   const [mobilePlayersExpanded, setMobilePlayersExpanded] = useState(false);
@@ -447,10 +451,14 @@ export function MockDraftExperience({
         setQueue(Array.isArray(saved.queue) ? saved.queue.filter((id: string) => ids.has(id)) : []);
         setMode(saved.mode === "existing" ? "existing" : "new"); setExistingPickIndex(saved.existingPickIndex ?? 0);
         setRealOrderPicks(saved.realOrderPicks ?? null); setSyncedNeeds(saved.syncedNeeds ?? null); setUseSyncedNeedsForDraft(!!saved.useSyncedNeedsForDraft);
-        const restoredStep = saved.step === "results" ? "results" : saved.step === "setup" ? "setup" : "draft";
+        // A draft whose every pick is already made is complete whichever step
+        // the checkpoint was written in: restore it as a read-only result,
+        // never as an active or paused draft.
+        const restoredComplete = isDraftComplete(saved.picks.length, saved.prospects.length, saved.settings.teams);
+        const restoredStep = restoredComplete ? "results" : saved.step === "results" ? "results" : saved.step === "setup" ? "setup" : "draft";
         stepRef.current = restoredStep; setStep(restoredStep); setPaused(restoredStep === "draft");
         setDraftId(typeof saved.id === "string" ? saved.id : crypto.randomUUID());
-        setRecoveryNotice(restoredStep === "draft" ? "Draft restored and paused. Resume when ready." : "Your previous draft has been restored.");
+        setRecoveryNotice(restoredStep === "draft" ? "Draft restored and paused. Resume when ready." : restoredComplete ? "" : "Your previous draft has been restored.");
       } else setDraftId(crypto.randomUUID());
     } catch { setRecoveryNotice("The previous draft could not be restored. Start a new draft below."); setDraftId(crypto.randomUUID()); }
     setCheckpointReady(true);
@@ -462,9 +470,26 @@ export function MockDraftExperience({
     if (!checkpointReady || mode === null) return;
     if (!sessionProspects && (step !== "setup" || picks.length > 0)) setSessionProspects(initialProspects);
     try {
-      localStorage.setItem("dd-mock-checkpoint-v1", JSON.stringify({ version: 1, id: draftId, classYear, settings, picks, queue, mode, step, existingPickIndex, realOrderPicks, syncedNeeds, useSyncedNeedsForDraft, prospects: sessionProspects ?? initialProspects }));
+      localStorage.setItem("dd-mock-checkpoint-v1", JSON.stringify({ version: 1, id: draftId, classYear, settings, picks, queue: queueIds, mode, step, existingPickIndex, realOrderPicks, syncedNeeds, useSyncedNeedsForDraft, prospects: sessionProspects ?? initialProspects }));
     } catch { setRecoveryNotice("Browser storage is unavailable. Keep this tab open until your draft is saved to your account."); }
-  }, [checkpointReady, mode, draftId, classYear, settings, picks, queue, step, existingPickIndex, realOrderPicks, syncedNeeds, useSyncedNeedsForDraft, initialProspects, sessionProspects]);
+  }, [checkpointReady, mode, draftId, classYear, settings, picks, queueIds, step, existingPickIndex, realOrderPicks, syncedNeeds, useSyncedNeedsForDraft, initialProspects, sessionProspects]);
+
+  // The queue everything reads: only players still on the board. Drafted
+  // players drop out here immediately (badge, list and queued markers all
+  // derive from this), and the raw id list is pruned below.
+  const queue = useMemo(() => availableQueue(queueIds, availableIds), [queueIds, availableIds]);
+  useEffect(() => {
+    if (queue.length === queueIds.length) return;
+    const gone = queueIds.filter((id) => !availableIds.has(id));
+    setQueue(queue);
+    const names = gone.map((id) => sessionProspects?.find((p) => p.id === id)?.name ?? initialProspects.find((p) => p.id === id)?.name).filter(Boolean);
+    if (names.length > 0) setQueueNotice(`${names.join(", ")} ${names.length > 1 ? "were" : "was"} drafted and removed from your queue.`);
+  }, [queue, queueIds, availableIds, sessionProspects, initialProspects]);
+  useEffect(() => {
+    if (!queueNotice) return;
+    const t = window.setTimeout(() => setQueueNotice(""), 5000);
+    return () => window.clearTimeout(t);
+  }, [queueNotice]);
 
   const ddRankMap = useMemo(() => {
     const format: LeagueFormat = qbFormat === "SUPERFLEX"
@@ -540,6 +565,12 @@ export function MockDraftExperience({
   // zone). Caught and fixed before this ever shipped.
   const MAX_ROUNDS = 4;
   const draftComplete = currentOverall > Math.min(initialProspects.length, teams * MAX_ROUNDS);
+  useEffect(() => {
+    if (!draftComplete) return;
+    setPaused(false);
+    setRecoveryNotice((n) => (/paused|restored/i.test(n) ? "" : n));
+  }, [draftComplete]);
+
   const isUserTurn = !draftComplete && deriveIsUserTurn(currentOverall, currentSlot, slot, userPickNumbers);
   // Keep the turn state synchronously available to click handlers. React state
   // does not rerender between rapid clicks, so relying only on the rendered
@@ -1350,6 +1381,7 @@ export function MockDraftExperience({
   return (
     <section className="mock-draft-shell fixed inset-x-0 bottom-0 top-[var(--nav-offset)] z-40 flex min-h-0 flex-col overflow-hidden bg-void sm:static sm:z-auto sm:block sm:min-h-0 sm:overflow-visible">
       {recoveryNotice && <p role="status" className="shrink-0 border-b border-border px-4 py-2 text-xs text-ink-secondary">{recoveryNotice} <button onClick={() => setRecoveryNotice("")} className="underline">Dismiss</button></p>}
+      {queueNotice && <p role="status" className="shrink-0 border-b border-border bg-surface-raised px-4 py-1.5 text-xs text-ink-secondary">{queueNotice}</p>}
       {mode === "existing" && existingPickIndex < maxPicks && existingPickIndex < manualEntryLimit && (
         <div className="mb-4 border border-accent/30 bg-accent/5 p-4">
           <div className="flex items-start justify-between gap-4">
@@ -1388,7 +1420,7 @@ export function MockDraftExperience({
               <Trophy className="h-3.5 w-3.5" /> Back to results
             </button>
           )}
-          <button
+          {!draftComplete && (<button
             type="button"
             onClick={() => setPaused((v) => !v)}
             aria-pressed={paused}
@@ -1399,8 +1431,8 @@ export function MockDraftExperience({
             )}
           >
             {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </button>
-          <div><div className="flex items-center gap-2"><h2 className="font-headline text-base uppercase tracking-tight text-ink">{classYear} Mock Draft</h2><span className="border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest2 text-accent"><span className="sm:hidden">{engineLabelShort(engine)}</span><span className="hidden sm:inline">{engineLabel(engine)}</span></span>{paused && <span className="border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest2 text-accent">Paused</span>}</div><p className="mt-0.5 text-[11px] text-ink-tertiary">{[`${teams} teams`, qbFormat === "SUPERFLEX" ? "Superflex" : "1 QB", ...(teFormat === "TEP" ? ["TEP"] : []), formatPickTimerLabel(pickTimer), "Linear"].join(" · ")}</p></div>
+          </button>)}
+          <div><div className="flex items-center gap-2"><h2 className="font-headline text-base uppercase tracking-tight text-ink">{classYear} Mock Draft</h2><span className="border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest2 text-accent"><span className="sm:hidden">{engineLabelShort(engine)}</span><span className="hidden sm:inline">{engineLabel(engine)}</span></span>{paused && !draftComplete && <span className="border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest2 text-accent">Paused</span>}</div><p className="mt-0.5 text-[11px] text-ink-tertiary">{[`${teams} teams`, qbFormat === "SUPERFLEX" ? "Superflex" : "1 QB", ...(teFormat === "TEP" ? ["TEP"] : []), formatPickTimerLabel(pickTimer), "Linear"].join(" · ")}</p></div>
         </div>
         <div
           className={cn(
@@ -1593,7 +1625,7 @@ export function MockDraftExperience({
           </div>
 
           <div className="hidden border-t border-border bg-surface-raised px-4 py-3 lg:block">
-            {paused ? (
+            {paused && !draftComplete ? (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-xs text-ink-secondary"><Pause className="h-3.5 w-3.5 text-accent" /> Draft paused</div>
                 <button type="button" onClick={() => setPaused(false)} className="border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest2 text-accent hover:bg-accent/20">Resume</button>
@@ -1857,7 +1889,7 @@ export function MockDraftExperience({
               <div className="flex items-center gap-2 text-xs text-ink-secondary"><span className="h-2 w-2 animate-pulse rounded-full bg-accent" /> Loading Community Rankings before the computer starts drafting…</div>
             ) : engine === "COMMUNITY" && communitySource === "unavailable" ? (
               <div className="flex items-center justify-between gap-3 text-xs text-ink-secondary"><span>FantasyCalc Community Rankings are currently unavailable, so computer picks are paused.</span><button type="button" onClick={() => window.location.reload()} className="shrink-0 border border-border-strong px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-widest2 text-ink hover:border-accent hover:text-accent">Retry</button></div>
-            ) : paused ? <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs text-ink-secondary"><Pause className="h-3.5 w-3.5 text-accent" /> Draft paused</div><button type="button" onClick={() => setPaused(false)} className="border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest2 text-accent hover:bg-accent/20">Resume</button></div> : draftComplete ? <div className="flex items-center gap-2 text-xs text-ink-secondary"><Trophy className="h-3.5 w-3.5 text-accent" /> Draft complete</div> : computerThinking ? <div className="flex items-center gap-2 text-xs text-ink-secondary"><span className="h-2 w-2 animate-pulse rounded-full bg-accent" /> {engineLabel(engine)} is making a pick…</div> : isUserTurn ? <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] text-accent">On the clock</p><p className="mt-1 text-sm font-semibold text-ink">Your pick: {formatPick(currentOverall, teams)}</p></div>{pickTimer === "UNTIMED" || remainingSeconds === null ? <span className="text-[10px] text-ink-tertiary">No timer</span> : <span className={cn("font-data text-2xl font-bold", remainingSeconds <= 10 ? "text-faller" : "text-ink")}>{formatCountdown(remainingSeconds)}</span>}</div> : <div className="text-xs text-ink-secondary">Waiting for the computer to select {formatPick(currentOverall, teams)}.</div>}
+            ) : paused && !draftComplete ? <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs text-ink-secondary"><Pause className="h-3.5 w-3.5 text-accent" /> Draft paused</div><button type="button" onClick={() => setPaused(false)} className="border border-accent/40 bg-accent/10 px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest2 text-accent hover:bg-accent/20">Resume</button></div> : draftComplete ? <div className="flex items-center gap-2 text-xs text-ink-secondary"><Trophy className="h-3.5 w-3.5 text-accent" /> Draft complete</div> : computerThinking ? <div className="flex items-center gap-2 text-xs text-ink-secondary"><span className="h-2 w-2 animate-pulse rounded-full bg-accent" /> {engineLabel(engine)} is making a pick…</div> : isUserTurn ? <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] text-accent">On the clock</p><p className="mt-1 text-sm font-semibold text-ink">Your pick: {formatPick(currentOverall, teams)}</p></div>{pickTimer === "UNTIMED" || remainingSeconds === null ? <span className="text-[10px] text-ink-tertiary">No timer</span> : <span className={cn("font-data text-2xl font-bold", remainingSeconds <= 10 ? "text-faller" : "text-ink")}>{formatCountdown(remainingSeconds)}</span>}</div> : <div className="text-xs text-ink-secondary">Waiting for the computer to select {formatPick(currentOverall, teams)}.</div>}
           </div>
         </div>
       </div>
