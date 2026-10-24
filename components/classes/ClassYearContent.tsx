@@ -336,45 +336,44 @@ export function ClassYearContent({
         <section className="border-b border-border bg-surface">
           <Container className="py-2 sm:py-3">
             <details className="group/summary">
-              <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-5 gap-y-1 py-1 text-xs text-ink-secondary [&::-webkit-details-marker]:hidden">
-                <span className="font-headline text-sm uppercase text-ink-tertiary">
+              <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-5 gap-y-1 py-1.5 text-sm text-ink-secondary [&::-webkit-details-marker]:hidden">
+                <span className="font-headline text-base uppercase text-ink-tertiary">
                   {summary.isPreDraftClass ? "Pre-Draft Class Strength" : "Class Strength"}
                 </span>
                 {summary.isPreDraftClass && summary.strength && (
-                  <span className="font-headline text-base uppercase text-ink">
+                  <span className="font-headline text-xl uppercase leading-none text-ink">
                     {summary.strength}
-                    {summary.percentile !== undefined && <span className="ml-1.5 text-xs text-accent">{ordinal(Math.max(1, Math.round(summary.percentile)))} pct</span>}
+                    {summary.percentile !== undefined && <span className="ml-2 text-sm text-accent">{ordinal(Math.max(1, Math.round(summary.percentile)))} pct</span>}
                   </span>
                 )}
                 {summary.classEliteRate !== undefined && (
-                  <span><span className="font-data font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Elite+</span>
+                  <span><span className="font-data text-base font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Elite+</span>
                 )}
                 {summary.topProspect && topTier && (
-                  <span className="min-w-0 truncate">Top: <span className="font-semibold text-ink">{summary.topProspect.name}</span></span>
+                  <span className="min-w-0">
+                    Top:{" "}
+                    <Link href={playerHref(summary.topProspect.id, format)} className="font-semibold text-ink hover:text-accent" onClick={(e) => e.stopPropagation()}>
+                      {summary.topProspect.name}
+                    </Link>{" "}
+                    <span style={{ color: getTierColor(topTier) }}>({topTier})</span>
+                  </span>
                 )}
-                <span className="ml-auto font-mono text-[10px] uppercase tracking-widest2 text-accent group-open/summary:hidden">Tier distribution ↓</span>
-                <span className="ml-auto hidden font-mono text-[10px] uppercase tracking-widest2 text-accent group-open/summary:inline">Hide ↑</span>
+                <span className="ml-auto font-mono text-[11px] uppercase tracking-widest2 text-accent group-open/summary:hidden">Details ↓</span>
+                <span className="ml-auto hidden font-mono text-[11px] uppercase tracking-widest2 text-accent group-open/summary:inline">Hide ↑</span>
               </summary>
             <div className="flex flex-col gap-6 pt-4 pb-3 lg:flex-row lg:items-start lg:gap-12">
-              <div className="lg:w-72 lg:shrink-0">
-                <span className="font-headline text-sm uppercase text-ink-tertiary">
-                  {summary.isPreDraftClass ? "Pre-Draft Class Strength" : "Class Strength"}
-                </span>
-                {summary.isPreDraftClass && summary.strength && (
-                  <div className="mt-3 flex items-baseline gap-3">
-                    <span className="font-headline text-3xl uppercase leading-none text-ink">{summary.strength}</span>
-                    {summary.percentile !== undefined && (
-                      <span className="font-headline text-sm uppercase text-accent">
-                        {ordinal(Math.max(1, Math.round(summary.percentile)))} percentile
-                      </span>
-                    )}
-                  </div>
-                )}
+              {/* The summary row already shows strength, Elite+ rate and the top
+                  prospect; this panel only adds what it doesn't. */}
+              <div className="text-sm lg:w-72 lg:shrink-0">
                 {summary.classEliteRate !== undefined && summary.benchmark.rate !== undefined && (
-                  <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
-                    <span className="font-headline text-3xl text-ink">{summary.classEliteRate.toFixed(0)}%</span>{" "}
-                    Elite+, {summary.classEliteRate >= summary.benchmark.rate ? "above" : "below"} the{ " "}
-                    {summary.benchmark.rate.toFixed(0)}% {summary.isPreDraftClass ? "historical drafted rookie average" : "database average"}.
+                  <p className="leading-relaxed text-ink-secondary">
+                    {summary.classEliteRate >= summary.benchmark.rate ? "Above" : "Below"} the {summary.benchmark.rate.toFixed(0)}%{" "}
+                    {summary.isPreDraftClass ? "historical drafted rookie average" : "database average"}.
+                  </p>
+                )}
+                {summary.strongestPosition && (
+                  <p className="mt-3 leading-relaxed text-ink-secondary">
+                    Strongest position: <span className="font-semibold text-ink">{summary.strongestPosition}</span> by average class score.
                   </p>
                 )}
                 {summary.isPreDraftClass && summary.benchmark.classesCompared > 0 && (
@@ -382,23 +381,6 @@ export function ClassYearContent({
                     Normalized to a typical historical class size to account for prospects who may eventually fall out of the class.
                   </p>
                 )}
-                <div className="mt-5 grid gap-3 border-t border-border pt-4 text-xs">
-                  {summary.topProspect && topTier && (
-                    <p className="leading-relaxed text-ink-tertiary">
-                      <span className="text-ink-tertiary">Highest graded</span><br />
-                      <Link href={playerHref(summary.topProspect.id, format)} className="font-semibold text-ink hover:text-accent">
-                        {summary.topProspect.name}
-                      </Link>{" "}
-                      <span style={{ color: getTierColor(topTier) }}>({topTier})</span>
-                    </p>
-                  )}
-                  {summary.strongestPosition && (
-                    <p className="leading-relaxed text-ink-tertiary">
-                      <span className="text-ink-tertiary">Strongest position</span><br />
-                      <span className="font-semibold text-ink">{summary.strongestPosition}</span> by average class score
-                    </p>
-                  )}
-                </div>
               </div>
 
               <div className="flex-1">

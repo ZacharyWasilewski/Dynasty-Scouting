@@ -168,9 +168,8 @@ export function PositionExplorer({
   // a filter returns zero rows, and they name the score actually shown.
   const scoreDescription = describeScoreType(prospects, scoreType);
   const scoreColumnLabel = scoreDescription.columnLabel;
-  const autoSelectorHint = scoreDescription.mixed
-    ? scoreDescription.stagesShown.map((st) => STAGE_SHORT_LABELS[st]).join(" / ") + " by row"
-    : scoreDescription.columnLabel;
+  const autoDescription = describeScoreType(prospects, "auto", false);
+  const autoSelectorStage = autoDescription.stagesShown.length === 1 ? autoDescription.stagesShown[0]! : null;
   const stageTag = (p: Prospect): string | null =>
     scoreType === "auto" && scoreDescription.mixed ? STAGE_SHORT_LABELS[autoStageFor(p)] : null;
   const unavailableText = (p: Prospect): string =>
@@ -362,7 +361,7 @@ export function PositionExplorer({
           </div>
 
 
-          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoDescription={autoSelectorHint} />
+          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoStage={autoSelectorStage} />
           <FilterSelect
             label="Filter by draft class"
             value={draftClass}

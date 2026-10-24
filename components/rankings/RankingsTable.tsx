@@ -401,9 +401,8 @@ function RankingsTableInner({
   // tag every row.
   const scoreDescription = describeScoreType(prospects, scoreType, earlyWatchMode);
   const scoreColumnLabel = scoreDescription.columnLabel;
-  const autoSelectorHint = scoreDescription.mixed
-    ? scoreDescription.stagesShown.map((s) => STAGE_SHORT_LABELS[s]).join(" / ") + " by row"
-    : scoreDescription.columnLabel;
+  const autoDescription = describeScoreType(prospects, "auto", earlyWatchMode);
+  const autoSelectorStage = autoDescription.stagesShown.length === 1 ? autoDescription.stagesShown[0]! : null;
   const scoreSortKey: SortKey = scoreType === "auto" && earlyWatchMode ? "preDraftScore" : "score";
   const scoreValue = (p: Prospect): number | undefined =>
     scoreType === "auto" && earlyWatchMode ? displayedRawScore(p, format) : scoreForType(p, scoreType, format, earlyWatchMode);
@@ -595,7 +594,7 @@ function RankingsTableInner({
           </div>
 
 
-          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoDescription={autoSelectorHint} />
+          <ScoreTypeSelect value={scoreType} onChange={handleScoreTypeChange} autoStage={autoSelectorStage} />
 
           <FilterSelect
             label="Filter by position"

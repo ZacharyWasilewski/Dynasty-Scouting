@@ -4,26 +4,27 @@ import { FilterSelect } from "@/components/rankings/FilterSelect";
 import { SCORE_TYPE_LABELS, SCORE_TYPE_OPTIONS, type ScoreType } from "@/lib/scoreType";
 
 /**
- * `autoDescription` names the score "Current-stage score" resolves to for the
- * list on screen (e.g. "Pre-Draft Score" or "DD / Pre-Draft by row"), so the
- * selector never claims a different score than the table shows.
+ * The default option is named for the score it actually shows (e.g.
+ * "Pre-Draft Score" or "DD Score"), or "Score by stage" for mixed lists, and
+ * the same stage is not listed a second time.
  */
 export function ScoreTypeSelect({
   value,
   onChange,
-  autoDescription,
+  autoStage,
 }: {
   value: ScoreType;
   onChange: (next: ScoreType) => void;
-  autoDescription?: string;
+  /** The single stage "auto" resolves to for this list, or null when mixed/empty. */
+  autoStage: ScoreType | null;
 }) {
+  const autoLabel = autoStage ? SCORE_TYPE_LABELS[autoStage] : "Score by stage";
+  const shown = value === autoStage ? "auto" : value;
   return (
-    <FilterSelect label="Score type" value={value} onChange={(e) => onChange(e.target.value as ScoreType)}>
-      {SCORE_TYPE_OPTIONS.map((type) => (
+    <FilterSelect label="Score type" value={shown} onChange={(e) => onChange(e.target.value as ScoreType)}>
+      {SCORE_TYPE_OPTIONS.filter((type) => type === "auto" || type !== autoStage).map((type) => (
         <option key={type} value={type}>
-          {type === "auto" && autoDescription
-            ? `Score: ${SCORE_TYPE_LABELS.auto} (${autoDescription})`
-            : `Score: ${SCORE_TYPE_LABELS[type]}`}
+          {type === "auto" ? autoLabel : SCORE_TYPE_LABELS[type]}
         </option>
       ))}
     </FilterSelect>
