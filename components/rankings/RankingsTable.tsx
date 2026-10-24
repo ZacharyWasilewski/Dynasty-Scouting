@@ -411,6 +411,14 @@ function RankingsTableInner({
   // Explicit score types that a prospect doesn't have render as unavailable
   // rather than quietly showing some other score.
   const unavailableText = (p: Prospect): string => (scoreType !== "auto" && scoreValue(p) === undefined ? "N/A" : "—");
+  // Round lines mark real draft-slot boundaries, so they only make sense when
+  // the list is the plain class order. Any other score, sort, search or filter
+  // reorders rows relative to their fixed ranks and would draw boundaries that
+  // don't exist.
+  const rankOrdered = (sortKey === "rank" || (earlyWatchMode && sortKey === "preDraftScore")) && sortDir === DEFAULT_DIR[sortKey];
+  const dividersActive =
+    !!showBigBoardDividers && rankOrdered && scoreType === "auto" && position === "all" && tier === "all" &&
+    query.trim() === "" && stageFilter === "all" && outcomeFilter === "all";
   const showScores = true;
   // Pre-draft-only views hide the DD Score column, so a non-default score
   // type takes over the single score column instead.
@@ -774,7 +782,7 @@ function RankingsTableInner({
                 const pick = rawScoreRankMap?.get(p.id) ?? collectionRankMap?.get(p.id) ?? (p.hasDraftData === true ? getRankForFormat(p, format) : pathname === "/players" ? scopedRankMap.get(p.id) : undefined);
                 const round = Math.ceil((pick ?? 0) / 12);
                 const isRoundBoundary =
-                  showBigBoardDividers && position === "all" && tier === "all" && pick !== undefined && pick > 1 && (pick - 1) % 12 === 0;
+                  dividersActive && pick !== undefined && pick > 1 && (pick - 1) % 12 === 0;
                 // Only 4 real rounds exist. The boundary where round 5
                 // would start becomes a single "Waiver Wire" marker
                 // instead, and no further round lines appear after it.
@@ -930,7 +938,7 @@ function RankingsTableInner({
               const pick = rawScoreRankMap?.get(p.id) ?? collectionRankMap?.get(p.id) ?? (p.hasDraftData === true ? getRankForFormat(p, format) : pathname === "/players" ? scopedRankMap.get(p.id) : undefined);
               const round = Math.ceil((pick ?? 0) / 12);
               const isRoundBoundary =
-                showBigBoardDividers && position === "all" && tier === "all" && pick !== undefined && pick > 1 && (pick - 1) % 12 === 0;
+                dividersActive && pick !== undefined && pick > 1 && (pick - 1) % 12 === 0;
               const isRoundStart = isRoundBoundary && round <= 4;
               const isWaiverWireStart = isRoundBoundary && round === 5;
 
