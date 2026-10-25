@@ -395,7 +395,10 @@ async function buildPhotoIndex(schoolAbbreviations: string[]): Promise<{ photos:
     );
   }
 
-  const teamIds = resolved.map((r) => r.id);
+  // Several app abbreviations can map to one ESPN team (e.g. LA TECH / LTU).
+  const abbrsByTeamId = new Map<string, string[]>();
+  for (const r of resolved) abbrsByTeamId.set(r.id, [...(abbrsByTeamId.get(r.id) ?? []), r.abbr]);
+  const teamIds = [...abbrsByTeamId.keys()];
 
   // Same "handful at a time" throttling already used for Google
   // Sheets tab fetches elsewhere in this codebase — hammering an
@@ -407,10 +410,15 @@ async function buildPhotoIndex(schoolAbbreviations: string[]): Promise<{ photos:
   for (let i = 0; i < teamIds.length; i += CONCURRENCY) {
     const batch = teamIds.slice(i, i + CONCURRENCY);
     const results = await Promise.all(batch.map((id) => fetchRosterPhotos(id)));
-    for (const roster of results) {
-      for (const [name, url] of roster.photos) next.set(name, url);
-      for (const [name, bio] of roster.bios) nextBios.set(name, bio);
-    }
+    results.forEach((roster, idx) => {
+      // Entries are keyed by name AND school. Two different players with the
+      // same name on different rosters (e.g. two Darius Taylors) must never
+      // overwrite each other or be matched across schools.
+      for (const abbr of abbrsByTeamId.get(batch[idx]!) ?? []) {
+        for (const [name, url] of roster.photos) next.set(schoolKey(name, abbr), url);
+        for (const [name, bio] of roster.bios) nextBios.set(schoolKey(name, abbr), bio);
+      }
+    });
   }
   return { photos: next, bios: nextBios };
 }
@@ -524,17 +532,44 @@ const EXACT_PHOTO_OVERRIDES: Record<string, string> = {
   "demons williams jr": "https://a.espncdn.com/i/headshots/college-football/players/full/5079653.png",
 };
 
-export function lookupCollegePhoto(index: Map<string, string>, name: string): string | undefined {
+/** Index key: normalized name plus this app's school abbreviation. */
+export function schoolKey(matchedName: string, schoolAbbreviation: string): string {
+  return `${matchedName}|${schoolAbbreviation.toUpperCase()}`;
+}
+
+/**
+ * Looks up a college headshot. The roster entry must come from the
+ * prospect's own school: a same-name player at another school is never
+ * returned. A prospect with no school is looked up by name only, and only
+ * when the name is unique in the index.
+ */
+export function lookupCollegePhoto(index: Map<string, string>, name: string, school?: string): string | undefined {
   const key = matchKey(name);
-  return index.get(key) ?? EXACT_PHOTO_OVERRIDES[key];
+  if (school) return index.get(schoolKey(key, school)) ?? EXACT_PHOTO_OVERRIDES[key];
+  return uniqueByName(index, key) ?? EXACT_PHOTO_OVERRIDES[key];
+}
+
+function uniqueByName<T>(index: Map<string, T>, key: string): T | undefined {
+  const prefix = `${key}|`;
+  let found: T | undefined;
+  let count = 0;
+  for (const [k, v] of index) {
+    if (k.startsWith(prefix)) {
+      found = v;
+      count++;
+      if (count > 1) return undefined;
+    }
+  }
+  return found;
 }
 
 /** Same matching as lookupCollegePhoto — no equivalent to
  *  EXACT_PHOTO_OVERRIDES here, since that table exists specifically
  *  for a few known ESPN roster-lookup failures affecting photos, not
  *  something with a bio-data equivalent. */
-export function lookupCollegeBio(index: Map<string, PlayerBio>, name: string): PlayerBio | undefined {
-  return index.get(matchKey(name));
+export function lookupCollegeBio(index: Map<string, PlayerBio>, name: string, school?: string): PlayerBio | undefined {
+  const key = matchKey(name);
+  return school ? index.get(schoolKey(key, school)) : uniqueByName(index, key);
 }
 
 /**

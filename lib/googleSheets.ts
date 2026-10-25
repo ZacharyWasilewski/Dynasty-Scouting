@@ -623,9 +623,9 @@ export function assignProspectPhotos(
 
   for (const p of prospects) {
     if (p.hasDraftData !== true) {
-      const collegePhoto = lookupCollegePhoto(collegePhotoIndex, p.name);
+      const collegePhoto = lookupCollegePhoto(collegePhotoIndex, p.name, p.school);
       if (collegePhoto) p.photoUrl = collegePhoto;
-      const bio = lookupCollegeBio(collegeBioIndex, p.name);
+      const bio = lookupCollegeBio(collegeBioIndex, p.name, p.school);
       if (bio) {
         if (bio.heightIn !== undefined) p.heightIn = bio.heightIn;
         if (bio.weightLbs !== undefined) p.weightLbs = bio.weightLbs;

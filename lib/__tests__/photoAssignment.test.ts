@@ -21,9 +21,28 @@ afterEach(() => {
 });
 
 describe("assignProspectPhotos", () => {
+  it("never gives a college player a same-name player's photo from another school", () => {
+    const collegePhotoIndex = new Map([
+      ["darius taylor|VA TECH", "virginia-tech-url"],
+      ["darius taylor|MINN", "minnesota-url"],
+    ]);
+    const minn = prospect({ id: "a", name: "Darius Taylor", position: "RB", hasDraftData: false, school: "MINN" });
+    const other = prospect({ id: "b", name: "Darius Taylor", position: "RB", hasDraftData: false, school: "OSU" });
+    assignProspectPhotos([minn, other], new Map(), collegePhotoIndex, new Map(), new Map());
+    expect(minn.photoUrl).toBe("minnesota-url");
+    expect(other.photoUrl).toBeUndefined();
+  });
+
+  it("uses the roster only from the matching school when that roster lacks the player", () => {
+    const collegePhotoIndex = new Map([["darius taylor|VA TECH", "virginia-tech-url"]]);
+    const minn = prospect({ id: "a", name: "Darius Taylor", position: "RB", hasDraftData: false, school: "MINN" });
+    assignProspectPhotos([minn], new Map(), collegePhotoIndex, new Map(), new Map());
+    expect(minn.photoUrl).toBeUndefined();
+  });
+
   it("routes a drafted player (hasDraftData true) through the Sleeper index, never ESPN", () => {
     const photoIndex = new Map([["nkeal harry|WR", "sleeper-url"]]);
-    const collegePhotoIndex = new Map([["nkeal harry", "espn-url"]]);
+    const collegePhotoIndex = new Map([["nkeal harry|ASU", "espn-url"]]);
     const p = prospect({ id: "a", name: "N'Keal Harry", hasDraftData: true, school: "ASU" });
 
     assignProspectPhotos([p], photoIndex, collegePhotoIndex, new Map(), new Map());
@@ -33,7 +52,7 @@ describe("assignProspectPhotos", () => {
 
   it("routes a devy player (hasDraftData not true) through ESPN college rosters, never Sleeper", () => {
     const photoIndex = new Map([["hollywood smothers|RB", "wrong-sleeper-namesake-url"]]);
-    const collegePhotoIndex = new Map([["hollywood smothers", "real-espn-url"]]);
+    const collegePhotoIndex = new Map([["hollywood smothers|TEX", "real-espn-url"]]);
     const p = prospect({ id: "a", name: "Hollywood Smothers", position: "RB", hasDraftData: false, school: "TEX" });
 
     assignProspectPhotos([p], photoIndex, collegePhotoIndex, new Map(), new Map());
@@ -43,7 +62,7 @@ describe("assignProspectPhotos", () => {
 
   it("treats hasDraftData === undefined the same as false — routes to ESPN, not Sleeper", () => {
     const photoIndex = new Map([["a|WR", "sleeper-url"]]);
-    const collegePhotoIndex = new Map([["a", "espn-url"]]);
+    const collegePhotoIndex = new Map([["a|TEX", "espn-url"]]);
     const p = prospect({ id: "a", hasDraftData: undefined, school: "TEX" });
 
     assignProspectPhotos([p], photoIndex, collegePhotoIndex, new Map(), new Map());
