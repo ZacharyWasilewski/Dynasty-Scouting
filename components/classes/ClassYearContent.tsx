@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { playerHref } from "@/lib/playerLinks";
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
@@ -165,20 +166,26 @@ function ordinal(value: number): string {
   }
 }
 
-function strongestPosition(classProspects: Prospect[], format: LeagueFormat): string | undefined {
-  const byPosition = new Map<string, number[]>();
-  for (const p of classProspects) {
-    const score = scoreForProspect(p, format);
-    if (score === undefined) continue;
-    const scores = byPosition.get(p.position) ?? [];
-    scores.push(score);
-    byPosition.set(p.position, scores);
+// A position's strength is the value its players add inside the draftable
+// pool: the sum of (score - the 48th-best score in the class) over the class's
+// top 48. Players outside the top 48 contribute nothing, so a position isn't
+// dragged down by a long tail of weak prospects (five elite RBs and fifteen
+// poor ones still reads as an RB strength), while depth inside the pool still
+// counts.
+function positionStrengths(classProspects: Prospect[], format: LeagueFormat): { position: string; value: number }[] {
+  const pool = topPool(classProspects, format);
+  if (pool.length === 0) return [];
+  const cutoff = scoreForProspect(pool[pool.length - 1]!, format) ?? 0;
+  const byPosition = new Map<string, number>();
+  for (const p of pool) {
+    const value = (scoreForProspect(p, format) ?? cutoff) - cutoff;
+    byPosition.set(p.position, (byPosition.get(p.position) ?? 0) + value);
   }
-  const rows = [...byPosition.entries()]
-    .filter(([, scores]) => scores.length > 0)
-    .map(([position, scores]) => ({ position, average: scores.reduce((sum, score) => sum + score, 0) / scores.length }))
-    .sort((a, b) => b.average - a.average);
-  return rows[0]?.position;
+  return [...byPosition.entries()].map(([position, value]) => ({ position, value })).sort((a, b) => b.value - a.value);
+}
+
+function strongestPosition(classProspects: Prospect[], format: LeagueFormat): string | undefined {
+  return positionStrengths(classProspects, format)[0]?.position;
 }
 
 function scoreForProspect(p: Prospect, format: LeagueFormat): number | undefined {
@@ -221,9 +228,9 @@ function computeClassSummary(classProspects: Prospect[], allProspects: Prospect[
     ? preDraftTopPoolEliteRate(classProspects, format)
     : eliteRate(topPool(classProspects, format), format);
   const benchmark = averageHistoricalClassEliteRate(allProspects, isPreDraftClass ? classYear : "9999", format);
-  const percentile = isPreDraftClass
-    ? classStrengthPercentile(allProspects, classYear, format, classEliteRate)
-    : undefined;
+  // Drafted classes are ranked among every finalized class (themselves
+  // included); a live pre-draft class is ranked against past classes only.
+  const percentile = classStrengthPercentile(allProspects, isPreDraftClass ? classYear : "9999", format, classEliteRate);
 
   return {
     tierCounts,
@@ -315,10 +322,10 @@ export function ClassYearContent({
                 <span className="font-headline text-base uppercase text-ink-tertiary">
                   {summary.isPreDraftClass ? "Pre-Draft Class Strength" : "Class Strength"}
                 </span>
-                {summary.isPreDraftClass && summary.strength && (
+                {(summary.strength || summary.percentile !== undefined) && (
                   <span className="font-headline text-xl uppercase leading-none text-ink">
                     {summary.strength}
-                    {summary.percentile !== undefined && <span className="ml-2 text-sm text-accent">{ordinal(Math.max(1, Math.round(summary.percentile)))} pct</span>}
+                    {summary.percentile !== undefined && <span className={cn("text-sm text-accent", summary.strength && "ml-2")}>{ordinal(Math.max(1, Math.round(summary.percentile)))} pct</span>}
                   </span>
                 )}
                 {summary.classEliteRate !== undefined && (
@@ -343,12 +350,12 @@ export function ClassYearContent({
                 {summary.classEliteRate !== undefined && summary.benchmark.rate !== undefined && (
                   <p className="leading-relaxed text-ink-secondary">
                     {summary.classEliteRate >= summary.benchmark.rate ? "Above" : "Below"} the {summary.benchmark.rate.toFixed(0)}%{" "}
-                    {summary.isPreDraftClass ? "historical drafted rookie average" : "database average"}.
+                    {summary.isPreDraftClass ? "historical drafted rookie average" : "average drafted class"}.
                   </p>
                 )}
                 {summary.strongestPosition && (
                   <p className="mt-3 leading-relaxed text-ink-secondary">
-                    Strongest position: <span className="font-semibold text-ink">{summary.strongestPosition}</span> by average class score.
+                    Strongest position: <span className="font-semibold text-ink">{summary.strongestPosition}</span>, by value in the class&apos;s top 48.
                   </p>
                 )}
                 {summary.benchmark.classesCompared > 0 && (
