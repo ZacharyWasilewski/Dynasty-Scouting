@@ -68,28 +68,6 @@ function preDraftEliteCount(prospects: Prospect[], format: LeagueFormat): number
 
 const MIN_FINALIZED_CLASS_YEAR = MIN_TRACKED_CLASS_YEAR;
 
-// Upcoming/devy classes are normalized against the size of actual finalized
-// draft classes only. This intentionally excludes both pre-2010 classes and
-// any live devy/upcoming class, whose prospect pools are still fluid.
-function historicalPreDraftClasses(prospects: Prospect[], classYear: string): Prospect[][] {
-  const targetYear = Number(classYear);
-  const byYear = new Map<string, Prospect[]>();
-
-  for (const p of prospects) {
-    const year = Number(p.draftClass);
-    if (!p.draftClass || !Number.isFinite(year)) continue;
-    if (year < MIN_FINALIZED_CLASS_YEAR || year >= targetYear) continue;
-    if (p.hasDraftData !== true) continue;
-    if (p.preDraftScore === undefined) continue;
-
-    const group = byYear.get(p.draftClass) ?? [];
-    group.push(p);
-    byYear.set(p.draftClass, group);
-  }
-
-  return [...byYear.values()].filter((group) => group.length > 0);
-}
-
 // Finalized class size is calculated independently of pre-draft score
 // availability so the denominator represents the real drafted class pool,
 // not merely the subset with recorded historical pre-draft scores.
@@ -111,26 +89,29 @@ function finalizedHistoricalClassSizes(prospects: Prospect[], classYear: string)
   return [...byYear.values()].filter((group) => group.length > 0);
 }
 
-// Early devy boards intentionally contain a wider pool than a finished draft
-// class. Using the live board size as the denominator would therefore dilute
-// the Elite+ rate with prospects who are expected to fall out of the class.
-// For upcoming classes, normalize the format-aware Elite+ count by the average
-// finalized historical class size instead.
-function averageHistoricalClassSize(prospects: Prospect[], classYear: string): { size: number | undefined; classesCompared: number } {
-  const groups = finalizedHistoricalClassSizes(prospects, classYear);
-  return {
-    size: groups.length > 0 ? groups.reduce((sum, group) => sum + group.length, 0) / groups.length : undefined,
-    classesCompared: groups.length,
-  };
+// Only about 48 players are drafted each year (4 rounds of 12), so class
+// strength is judged on the top 48 of a class rather than the whole board:
+// early devy boards carry many prospects who will never be drafted, and
+// counting them would dilute the Elite+ rate. The same top-48 rule is applied
+// to every historical class so the comparison is like for like.
+const CLASS_POOL_SIZE = 48;
+
+function topPool(prospects: Prospect[], format: LeagueFormat): Prospect[] {
+  return [...prospects]
+    .filter((p) => scoreForProspect(p, format) !== undefined)
+    .sort((a, b) => (scoreForProspect(b, format) ?? -Infinity) - (scoreForProspect(a, format) ?? -Infinity))
+    .slice(0, CLASS_POOL_SIZE);
 }
 
-function normalizedPreDraftEliteRate(
-  prospects: Prospect[],
-  format: LeagueFormat,
-  denominator: number | undefined
-): number | undefined {
-  if (!denominator || denominator <= 0) return undefined;
-  return (preDraftEliteCount(prospects, format) / denominator) * 100;
+// Elite+ share of a live pre-draft class's top 48 by Pre-Draft Score. The
+// denominator is always the pool size, so a thin early board can't inflate it.
+function preDraftTopPoolEliteRate(prospects: Prospect[], format: LeagueFormat): number | undefined {
+  const pool = [...prospects]
+    .filter((p) => preDraftScoreForComparison(p, format) !== undefined)
+    .sort((a, b) => (preDraftScoreForComparison(b, format) ?? -Infinity) - (preDraftScoreForComparison(a, format) ?? -Infinity))
+    .slice(0, CLASS_POOL_SIZE);
+  if (pool.length === 0) return undefined;
+  return (preDraftEliteCount(pool, format) / CLASS_POOL_SIZE) * 100;
 }
 
 // The benchmark for an upcoming class remains the actual average Elite+ rate
@@ -143,7 +124,7 @@ function averageHistoricalClassEliteRate(
 ): { rate: number | undefined; classesCompared: number } {
   const groups = finalizedHistoricalClassSizes(prospects, classYear);
   const rates = groups
-    .map((group) => eliteRate(group, format))
+    .map((group) => eliteRate(topPool(group, format), format))
     .filter((rate): rate is number => rate !== undefined);
 
   return {
@@ -160,7 +141,7 @@ function classStrengthPercentile(
 ): number | undefined {
   if (currentRate === undefined) return undefined;
   const rates = finalizedHistoricalClassSizes(prospects, classYear)
-    .map((group) => eliteRate(group, format))
+    .map((group) => eliteRate(topPool(group, format), format))
     .filter((rate): rate is number => rate !== undefined);
   if (!rates.length) return undefined;
   return (rates.filter((rate) => rate <= currentRate).length / rates.length) * 100;
@@ -236,15 +217,10 @@ function computeClassSummary(classProspects: Prospect[], allProspects: Prospect[
   });
   const topProspect = ranked.length > 0 ? ranked[0] : undefined;
 
-  const historicalClassSize = isPreDraftClass
-    ? averageHistoricalClassSize(allProspects, classYear)
-    : { size: undefined, classesCompared: 0 };
   const classEliteRate = isPreDraftClass
-    ? normalizedPreDraftEliteRate(classProspects, format, historicalClassSize.size)
-    : eliteRate(classProspects, format);
-  const benchmark = isPreDraftClass
-    ? averageHistoricalClassEliteRate(allProspects, classYear, format)
-    : { rate: eliteRate(allProspects.filter((p) => p.hasDraftData === true), format), classesCompared: 0 };
+    ? preDraftTopPoolEliteRate(classProspects, format)
+    : eliteRate(topPool(classProspects, format), format);
+  const benchmark = averageHistoricalClassEliteRate(allProspects, isPreDraftClass ? classYear : "9999", format);
   const percentile = isPreDraftClass
     ? classStrengthPercentile(allProspects, classYear, format, classEliteRate)
     : undefined;
@@ -255,7 +231,6 @@ function computeClassSummary(classProspects: Prospect[], allProspects: Prospect[
     classEliteRate,
     benchmark,
     percentile,
-    historicalClassSize,
     strength: strengthLabel(isPreDraftClass),
     strongestPosition: strongestPosition(classProspects, format),
     isPreDraftClass,
@@ -347,7 +322,7 @@ export function ClassYearContent({
                   </span>
                 )}
                 {summary.classEliteRate !== undefined && (
-                  <span><span className="font-data text-base font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Elite+</span>
+                  <span><span className="font-data text-base font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Elite+ in top 48</span>
                 )}
                 {summary.topProspect && topTier && (
                   <span className="min-w-0">
@@ -376,9 +351,9 @@ export function ClassYearContent({
                     Strongest position: <span className="font-semibold text-ink">{summary.strongestPosition}</span> by average class score.
                   </p>
                 )}
-                {summary.isPreDraftClass && summary.benchmark.classesCompared > 0 && (
+                {summary.benchmark.classesCompared > 0 && (
                   <p className="mt-3 text-xs leading-relaxed text-ink-tertiary">
-                    Normalized to a typical historical class size to account for prospects who may eventually fall out of the class.
+                    Based on the class&apos;s top 48 prospects, since only about 48 players are drafted each year.
                   </p>
                 )}
               </div>
