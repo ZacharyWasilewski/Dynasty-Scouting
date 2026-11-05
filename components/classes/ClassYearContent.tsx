@@ -358,11 +358,6 @@ export function ClassYearContent({
                     Strongest position: <span className="font-semibold text-ink">{summary.strongestPosition}</span>, by value in the class&apos;s top 48.
                   </p>
                 )}
-                {summary.benchmark.classesCompared > 0 && (
-                  <p className="mt-3 text-xs leading-relaxed text-ink-tertiary">
-                    Based on the class&apos;s top 48 prospects, since only about 48 players are drafted each year.
-                  </p>
-                )}
               </div>
 
               <div className="flex-1">
