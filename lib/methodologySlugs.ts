@@ -140,4 +140,95 @@ export const METHODOLOGY_CONTENT: Partial<Record<string, MethodologyPositionCont
       },
     },
   },
+  RB: {
+    intro:
+      "After it seemed like NFL teams were done with runningbacks, we went right back to the golden age. Runningbacks have never been worth more in your dynasty leagues, and Dynasty Database will help you create value by identifying which backs you should draft.",
+    subscores: {
+      Size: {
+        text: "Historically, running backs above a 30 BMI have achieved more success at the NFL level. Size is starting to become a bit less important in today's NFL, but bigger is almost always better.",
+      },
+      Speed: {
+        text: "A slow runningback isn't a death sentence, but this helps weed out the guys who can never create breakaway runs at the next level. You don't have to be a track star, but speed-size combinations are very important when scoring a prospect.",
+      },
+      Receiving: {
+        text: "This tracks how much of the receiving offense a runningback was responsible for in college. Since PPR formats are the most popular, runningbacks who can catch passes are highly coveted in dynasty leagues.",
+      },
+      Age: {
+        text: "Similar to size, runningbacks who start their NFL career at age 22 or younger have historically had higher rates of success at the next level. Elite talent will usually declare early, even in today's age of NIL, and this is reflected in the DD Score.",
+      },
+      "Draft Capital": {
+        text: "A first-round NFL runningback has an extremely high chance of hitting, and a Day 2 pick also reflects a heavy investment into the position. After this, opportunity becomes much more important when analyzing a runningback prospect.",
+      },
+      Opportunity: {
+        text: "This is a qualitative measure of a player's opportunity going into their NFL career.",
+        classifications: [
+          { label: "RB1", description: "A bellcow back in the NFL who will receive the large majority of carries in their offense." },
+          { label: "COM", description: "A committee back will split time close to 50/50 with another rookie or veteran player, and could eventually take over if the other back fades out of the offense." },
+          { label: "RB2P", description: "A runningback stuck behind an NFL starter who could be replaced if they don't perform up to standard. RB2P players are usually Day 2 or early Day 3 picks sitting behind fading veterans." },
+          { label: "RB2H", description: "This kind of back is stuck behind a top-end runningback in the NFL, but faces no real competition for the handcuff spot." },
+          { label: "DEPTH", description: "This player likely won't see much real opportunity on an NFL field without injuries or major changes ahead of them." },
+        ],
+      },
+    },
+  },
+  WR: {
+    intro:
+      "A great wideout is the cornerstone of almost every great dynasty team. Receivers have been near the top of dynasty rankings for years, and it feels like elite prospects are coming out in almost every rookie class. Dynasty Database will help you separate which guys have the best chance to create elite value for your squad.",
+    subscores: {
+      Production: {
+        text: "Production is one of the most important pre-draft metrics when analyzing a wide receiver. This measures how many receiving yards a wide receiver put up in the best season of their college career.",
+      },
+      Dominator: {
+        text: "Dominator is used to give some context to a receiver's production. Production alone can't account for the offense a player is in or how often that team throws the ball, which can make raw receiving totals a little misleading. Dominator helps show how much of their team's receiving production a player was actually responsible for.",
+      },
+      "Breakout Age": {
+        text: "This tracks how old a wide receiver was during their first college season with at least 600 receiving yards. The younger a player is when they break out, the better their chances have historically been of succeeding at the next level.",
+      },
+      Size: {
+        text: "This is becoming less important in today's NFL, but it still matters. This metric simply tracks the size of a wide receiver prospect and rewards players who fall into historically successful size ranges without making it impossible for smaller receivers to score well.",
+      },
+      "Draft Capital": {
+        text: "While being a first-round pick gives a receiver a much better chance of hitting at the NFL level, the position can still be a bit of a crapshoot. High draft capital becomes even more meaningful when it is paired with strong production and a good opportunity grade.",
+      },
+      Opportunity: {
+        text: "This is a qualitative measure of a player's opportunity going into their NFL career.",
+        classifications: [
+          { label: "WR1", description: "A receiver who walks into an offense with a clear path to becoming the top target on their team." },
+          { label: "COM", description: "A committee wide receiver will split targets fairly evenly with another receiver, or in some cases a tight end, on their NFL team." },
+          { label: "WR2U", description: "This is usually a later-round wide receiver who starts behind a player that isn't completely locked into their role, giving them a real opportunity to earn more targets with good play." },
+          { label: "WR2", description: "A wide receiver who will likely be consistently out-targeted by a top-level wideout on their team, with a limited path to becoming the main target in the offense." },
+          { label: "DEPTH", description: "This player likely won't see much meaningful opportunity on an NFL field without injuries or major changes ahead of them on the depth chart." },
+        ],
+      },
+    },
+  },
+  TE: {
+    intro:
+      "Tight end is usually the most replaceable position on your dynasty team, but that doesn't mean there isn't still value waiting to be found. Rookie tight ends are actually one of the most likely positions to retain or gain value after their first season in the NFL, and there's also that ever-so-elusive chance that any tight end could turn into an elite asset for your team.",
+    subscores: {
+      Production: {
+        text: "Similar to wide receivers, production is a very important differentiator between an average tight end and a difference maker at the next level. The best tight ends for your fantasy team were usually already putting up big numbers for their college football team.",
+      },
+      Volume: {
+        text: "There are usually two main ways tight ends produce at a high level in fantasy football, and this tracks the first type: a target hog. While not as common as the next metric, some tight ends can command volume similar to a wide receiver, which is very telling for NFL success. Volume tracks how many targets per game a tight end saw in college.",
+      },
+      "Redzone Threat": {
+        text: "This is the second type of tight end touched on in Volume: the touchdown merchant. Some tight ends don't command many targets, but can still produce for your team if a large amount of those targets come in the red zone, resulting in touchdowns and six points in your lineup. This metric tracks how many touchdowns per game a tight end scored in college.",
+      },
+      Athleticism: {
+        text: "Another important metric when evaluating tight ends, this uses RAS (Relative Athletic Score) for each player and compares them to the average at the position. The best tight ends are usually better athletes, since being bigger, faster, and more explosive gives them a better chance to take advantage of the coverage usually given to tight ends.",
+      },
+      "Draft Capital": {
+        text: "Tight end draft capital is similar to quarterback in that it matters a lot. First-round tight ends have a much higher chance of succeeding at the NFL level, and those odds fall off pretty quickly as you move later into the draft.",
+      },
+      Opportunity: {
+        text: "This is a qualitative measure of a player's opportunity going into their NFL career.",
+        classifications: [
+          { label: "TE1", description: "This is a tight end who will be the starter on day one for their NFL team." },
+          { label: "COM", description: "A committee tight end will most likely start in more of a backup role, but the guy in front of them is close enough to replacement level that there is a real opportunity to gain the starting job as the seasons go along." },
+          { label: "DEPTH", description: "This player likely won't see much meaningful opportunity on an NFL field without injuries or major changes ahead of them on the depth chart." },
+        ],
+      },
+    },
+  },
 };
