@@ -430,6 +430,9 @@ export function BoardEditor({ prospects, classYear }: { prospects: Prospect[]; c
                       >
                         {score !== undefined ? score.toFixed(1) : "TBD"}
                         {isOverridden ? "*" : ""}
+                        {isOverridden && officialScore !== undefined && (
+                          <span className="block text-right text-[10px] font-normal text-ink-tertiary">Official {officialScore.toFixed(1)}</span>
+                        )}
                       </span>
                       <button
                         type="button"

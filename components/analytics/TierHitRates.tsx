@@ -123,7 +123,7 @@ export function TierHitRates({
                   </span>
                 </span>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="hidden whitespace-nowrap font-data text-xs text-ink-tertiary sm:inline" title={`${weighted ? row.valueCount : row.count} evaluated; ${row.total} total`}>
+                  <span className="whitespace-nowrap font-data text-[11px] text-ink-tertiary sm:text-xs" title={`${weighted ? row.valueCount : row.count} evaluated; ${row.total} total`}>
                     n={weighted ? row.valueCount : row.count}
                   </span>
                   <div className="h-1.5 w-24 bg-void sm:w-40">

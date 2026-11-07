@@ -133,6 +133,15 @@ export function PlayerComparison({
 
   return (
     <div>
+      {/* Always-visible key. The icons carry hover text on desktop, but phones
+          have no hover, so the meaning is printed where first-time users can
+          read it. */}
+      <ul aria-label="Outcome key" className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-secondary">
+        <li className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-riser" aria-hidden="true" />Hit</li>
+        <li className="flex items-center gap-1.5"><XCircle className="h-4 w-4 text-faller" aria-hidden="true" />Miss</li>
+        <li className="flex items-center gap-1.5"><MinusCircle className="h-4 w-4" style={{ color: "#C99700" }} aria-hidden="true" />Push</li>
+        <li className="flex items-center gap-1.5"><HelpCircle className="h-4 w-4 text-ink-tertiary" aria-hidden="true" />Too early to tell</li>
+      </ul>
       {/* The closest match gets real visual emphasis — a full-width
           row of its own, not just first-in-a-grid, while the
           remaining matches stay compact underneath. All three were
