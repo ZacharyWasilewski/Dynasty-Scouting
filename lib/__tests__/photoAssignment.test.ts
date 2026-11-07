@@ -153,3 +153,19 @@ describe("assignSchoolLogos", () => {
     expect(p.schoolLogoUrl).toBeUndefined();
   });
 });
+
+describe("nflverse bio fallback", () => {
+  it("parses and looks up retired player measurements, and ignores ambiguous names", async () => {
+    const { parseNflverseBios, lookupNflverseBio } = await import("../nflverseBios");
+    const csv = [
+      "display_name,position,height,weight,draft_year",
+      'Jahvid Best,RB,70,199,2010',
+      "Mike Williams,WR,76,218,2010",
+      "Mike Williams,WR,74,210,2017",
+    ].join("\n");
+    const idx = parseNflverseBios(csv);
+    expect(lookupNflverseBio(idx, "Jahvid Best", "RB")).toEqual({ heightIn: 70, weightLbs: 199 });
+    expect(lookupNflverseBio(idx, "Mike Williams", "WR")).toBeUndefined();
+    expect(lookupNflverseBio(idx, "Mike Williams", "WR", 2017)?.heightIn).toBe(74);
+  });
+});

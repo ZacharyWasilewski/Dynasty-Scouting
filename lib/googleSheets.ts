@@ -14,6 +14,7 @@ import {
 import { applyDDScores } from "./ddScore";
 import { isInactiveSleeperPhoto, getPlayerPhotoIndexIfReady, lookupPlayerPhoto, getSleeperBioIndexIfReady, lookupPlayerBio, type PlayerBio } from "./playerPhotos";
 import { getEspnNflPhotosIfReady, getEspnNflBios } from "./espnNflPhotos";
+import { getNflverseBiosIfReady, lookupNflverseBio } from "./nflverseBios";
 import { getCollegePhotoIndexIfReady, lookupCollegePhoto, getSchoolLogoIndex, matchKey as matchKeyForLog, getCollegeBioIndexIfReady, lookupCollegeBio } from "./collegePhotos";
 import { reportStatus, reportHealthEvent } from "./systemStatus";
 import { maybeRefreshScoreSnapshot } from "./trending";
@@ -613,7 +614,9 @@ export function assignProspectPhotos(
   /** ESPN NFL headshots (normalized name -> URL) for drafted players Sleeper no longer lists. */
   espnFallbackIndex: Map<string, string> = new Map(),
   /** ESPN height/weight (normalized name -> bio), used only to fill gaps. */
-  espnBioIndex: Map<string, PlayerBio> = new Map()
+  espnBioIndex: Map<string, PlayerBio> = new Map(),
+  /** nflverse combine measurements, the last resort for retired players. */
+  nflverseIndex: ReturnType<typeof getNflverseBiosIfReady> = new Map()
 ): void {
   if (prospects.length > 50 && !prospects.some((p) => p.hasDraftData === true)) {
     console.error(
@@ -647,6 +650,13 @@ export function assignProspectPhotos(
     if (espnBio) {
       if (p.heightIn === undefined && espnBio.heightIn !== undefined) p.heightIn = espnBio.heightIn;
       if (p.weightLbs === undefined && espnBio.weightLbs !== undefined) p.weightLbs = espnBio.weightLbs;
+    }
+    if (p.heightIn === undefined || p.weightLbs === undefined) {
+      const nv = lookupNflverseBio(nflverseIndex, p.name, p.position, p.draftClass ? Number(p.draftClass) : undefined);
+      if (nv) {
+        if (p.heightIn === undefined && nv.heightIn !== undefined) p.heightIn = nv.heightIn;
+        if (p.weightLbs === undefined && nv.weightLbs !== undefined) p.weightLbs = nv.weightLbs;
+      }
     }
   }
 }
@@ -1405,7 +1415,7 @@ async function fetchLiveSheetData(): Promise<SheetData> {
       })
       .map((p) => ({ name: p.name, position: p.position }))
   );
-  assignProspectPhotos(prospects, photoIndex, collegePhotoIndex, bioIndex, collegeBioIndex, espnFallbackIndex, getEspnNflBios());
+  assignProspectPhotos(prospects, photoIndex, collegePhotoIndex, bioIndex, collegeBioIndex, espnFallbackIndex, getEspnNflBios(), getNflverseBiosIfReady());
   assignSchoolLogos(prospects, logoIndex);
   // Targeted diagnostic for specific players confirmed to be matched
   // (present with a real photoUrl here) but still reported as showing
