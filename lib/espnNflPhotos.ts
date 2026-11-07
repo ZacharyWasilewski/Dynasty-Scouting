@@ -107,18 +107,62 @@ function toCandidates(items: SearchItem[], key: string): Candidate[] {
 
 type Resolved = { url: string | null; outcome: Outcome; heightIn?: number; weightLbs?: number };
 
-async function fetchBio(id: string, leagueId: string): Promise<{ heightIn?: number; weightLbs?: number }> {
-  const sport = leagueId === "28" ? "nfl" : "college-football";
-  const res = await fetchWithTimeout(`https://site.web.api.espn.com/apis/common/v3/sports/football/${sport}/athletes/${id}`);
+function parseHeightIn(value: unknown, display: unknown): number | undefined {
+  const n = Number(value);
+  if (n >= 60 && n <= 90) return Math.round(n);
+  // "5' 10\"" style display strings.
+  const m = typeof display === "string" ? display.match(/(\d)\s*'\s*(\d{1,2})/) : null;
+  if (m) {
+    const inches = Number(m[1]) * 12 + Number(m[2]);
+    if (inches >= 60 && inches <= 90) return inches;
+  }
+  return undefined;
+}
+
+function parseWeightLbs(value: unknown, display: unknown): number | undefined {
+  const n = Number(value);
+  if (n >= 140 && n <= 400) return Math.round(n);
+  const m = typeof display === "string" ? display.match(/(\d{3})/) : null;
+  if (m) {
+    const lbs = Number(m[1]);
+    if (lbs >= 140 && lbs <= 400) return lbs;
+  }
+  return undefined;
+}
+
+type AthleteBio = { height?: number; weight?: number; displayHeight?: string; displayWeight?: string };
+
+async function fetchBioFrom(url: string, pick: (json: unknown) => AthleteBio | undefined): Promise<{ heightIn?: number; weightLbs?: number }> {
+  const res = await fetchWithTimeout(url);
   if (!res || !res.ok) return {};
   try {
-    const json = (await res.json()) as { athlete?: { height?: number; weight?: number } };
-    const h = Number(json.athlete?.height);
-    const w = Number(json.athlete?.weight);
-    return { heightIn: h >= 60 && h <= 90 ? Math.round(h) : undefined, weightLbs: w >= 140 && w <= 400 ? Math.round(w) : undefined };
+    const a = pick(await res.json());
+    if (!a) return {};
+    return { heightIn: parseHeightIn(a.height, a.displayHeight), weightLbs: parseWeightLbs(a.weight, a.displayWeight) };
   } catch {
     return {};
   }
+}
+
+/** Height/weight for an ESPN athlete. Tries the site API, then ESPN's core
+ *  API (which still carries retired players), and retries once, so one slow
+ *  or empty response no longer leaves a player without a height. */
+async function fetchBio(id: string, leagueId: string): Promise<{ heightIn?: number; weightLbs?: number }> {
+  const sport = leagueId === "28" ? "nfl" : "college-football";
+  const league = leagueId === "28" ? "nfl" : "college-football";
+  const sources: [string, (json: unknown) => AthleteBio | undefined][] = [
+    [`https://site.web.api.espn.com/apis/common/v3/sports/football/${sport}/athletes/${id}`, (j) => (j as { athlete?: AthleteBio }).athlete],
+    [`https://sports.core.api.espn.com/v2/sports/football/leagues/${league}/athletes/${id}`, (j) => j as AthleteBio],
+  ];
+  let out: { heightIn?: number; weightLbs?: number } = {};
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const [url, pick] of sources) {
+      const got = await fetchBioFrom(url, pick);
+      out = { heightIn: out.heightIn ?? got.heightIn, weightLbs: out.weightLbs ?? got.weightLbs };
+      if (out.heightIn !== undefined && out.weightLbs !== undefined) return out;
+    }
+  }
+  return out;
 }
 
 async function resolveOne(name: string, position: string): Promise<Resolved> {
@@ -191,7 +235,7 @@ async function fillCache(targets: { name: string; position: string }[]): Promise
         } catch {
           outcomeCounts["search-failed"]++;
         }
-        cache.set(matchKey(name), { url, ...bio, expires: Date.now() + (url ? HIT_TTL_MS : MISS_TTL_MS) });
+        cache.set(matchKey(name), { url, ...bio, expires: Date.now() + (url && bio.heightIn !== undefined && bio.weightLbs !== undefined ? HIT_TTL_MS : MISS_TTL_MS) });
       })
     );
   }
