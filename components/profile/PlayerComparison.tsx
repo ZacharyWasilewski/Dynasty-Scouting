@@ -5,7 +5,7 @@ import { DialogSurface } from "@/components/ui/DialogSurface";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { X, Users, User, CheckCircle2, XCircle } from "@/components/ui/SiteIcons";
+import { X, Users, User, CheckCircle2, XCircle, MinusCircle, HelpCircle } from "@/components/ui/SiteIcons";
 import { findSimilarProspects, isResolved } from "@/lib/similarProspects";
 import { SchoolLogo } from "@/components/ui/SchoolLogo";
 import { ComparisonPanel } from "@/components/comparison/ComparisonPanel";
@@ -40,15 +40,31 @@ function ComparisonThumb({ prospect, size }: { prospect: Prospect; size: number 
   );
 }
 
-/** Small hit/miss marker showing how a comparable player actually panned out.
- *  Nothing is shown for unresolved or push (RP) outcomes. */
+/** Outcome marker showing how a comparable player actually panned out:
+ *  green check = hit, red X = miss, gold minus = push (RP), grey question
+ *  mark = too early to tell. Every comp gets one. */
 function OutcomeIcon({ prospect }: { prospect: Prospect }) {
-  if (prospect.hitMiss !== "HIT" && prospect.hitMiss !== "MISS") return null;
-  const hit = prospect.hitMiss === "HIT";
-  const label = hit ? "Hit: this player panned out" : "Miss: this player did not pan out";
+  if (prospect.hitMiss === "HIT" || prospect.hitMiss === "MISS") {
+    const hit = prospect.hitMiss === "HIT";
+    const label = hit ? "Hit: this player panned out" : "Miss: this player did not pan out";
+    return (
+      <span className={hit ? "text-riser" : "text-faller"} title={label} role="img" aria-label={label}>
+        {hit ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+      </span>
+    );
+  }
+  if (prospect.finish?.toUpperCase() === "RP") {
+    const label = "Push: neither a hit nor a miss";
+    return (
+      <span style={{ color: "#C99700" }} title={label} role="img" aria-label={label}>
+        <MinusCircle className="h-4 w-4" />
+      </span>
+    );
+  }
+  const label = "Too early to tell";
   return (
-    <span className={hit ? "text-riser" : "text-faller"} title={label} role="img" aria-label={label}>
-      {hit ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+    <span className="text-ink-tertiary" title={label} role="img" aria-label={label}>
+      <HelpCircle className="h-4 w-4" />
     </span>
   );
 }

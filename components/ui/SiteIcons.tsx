@@ -217,6 +217,7 @@ const ShieldCheck = makeIcon("ShieldCheck", <>
 </>);
 const CheckCircle2 = makeIcon("CheckCircle2", <><circle cx="12" cy="12" r="8.4" /><path d="m8.4 12.2 2.2 2.2 5-5" /></>);
 const XCircle = makeIcon("XCircle", <><circle cx="12" cy="12" r="8.4" /><path d="m9 9 6 6M15 9l-6 6" /></>);
+const HelpCircle = makeIcon("HelpCircle", <><circle cx="12" cy="12" r="8.4" /><path d="M9.7 9.6a2.4 2.4 0 1 1 3.4 2.2c-.7.3-1.1.8-1.1 1.5M12 16.3h.01" /></>);
 const MinusCircle = makeIcon("MinusCircle", <><circle cx="12" cy="12" r="8.4" /><path d="M8.4 12h7.2" /></>);
 const Check = makeIcon("Check", <path d="m5 12.5 4 4 10-10" />);
 
@@ -263,5 +264,5 @@ export {
   CornerDownLeft, Database, GitCompareArrows, History, Home, Inbox, Info, KeyRound,
   Layers, LayoutGrid, Link2, ListOrdered, Loader2, LogIn, LogOut, Mail, Menu,
   RotateCcw, Search, Share2, ShieldCheck, Shuffle, Sparkles, Target, Trash2,
-  TrendingDown, TrendingUp, User, UserPlus, UserX, Users, X, XCircle, MinusCircle, Shield, ClassMark, ArrowUpDown, Filter, Pause, Play, Trophy, Zap,
+  TrendingDown, TrendingUp, User, UserPlus, UserX, Users, X, XCircle, MinusCircle, HelpCircle, Shield, ClassMark, ArrowUpDown, Filter, Pause, Play, Trophy, Zap,
 };
