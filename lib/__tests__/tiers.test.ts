@@ -7,9 +7,9 @@ describe("getTierForScore", () => {
   });
 
   it("uses inclusive lower bounds at each tier boundary", () => {
-    expect(getTierForScore(95)).toBe("Generational");
-    expect(getTierForScore(94.9)).toBe("Elite");
-    expect(getTierForScore(84)).toBe("Elite");
+    expect(getTierForScore(95)).toBe("Elite");
+    expect(getTierForScore(94.9)).toBe("Blue Chip");
+    expect(getTierForScore(84)).toBe("Blue Chip");
     expect(getTierForScore(83.9)).toBe("Starter");
     expect(getTierForScore(74)).toBe("Starter");
     expect(getTierForScore(63)).toBe("Flex");
@@ -26,7 +26,7 @@ describe("getTierForScore", () => {
 
 describe("getTierColor", () => {
   it("returns the defined hex color for a known tier", () => {
-    expect(getTierColor("Generational")).toBe("#7C3AED");
+    expect(getTierColor("Elite")).toBe("#7C3AED");
     expect(getTierColor("Roster Clogger")).toBe("#B91C1C");
   });
 });

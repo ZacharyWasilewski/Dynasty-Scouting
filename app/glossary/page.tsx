@@ -15,8 +15,8 @@ export const metadata = {
 // a real threshold or color change in lib/tiers.ts would silently
 // never reach this page.
 const TIER_BLURBS: Record<string, string> = {
-  Generational: "The rarest grade on the site, reserved for truly elite prospects.",
-  Elite: "A clear top-tier prospect, just short of Generational.",
+  Elite: "The rarest grade on the site, reserved for truly elite prospects.",
+  "Blue Chip": "A clear top-tier prospect, just short of Elite.",
   Starter: "A strong fantasy prospect grade; not a guarantee of an NFL starting role.",
   Flex: "The middle of the pack, a solid player with real flex appeal.",
   "Upside Shot": "Lower floor, but real athletic or situational upside.",

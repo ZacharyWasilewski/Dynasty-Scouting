@@ -15,7 +15,7 @@ export function TierBadge({
   perfectScore?: boolean;
 }) {
   const color = getTierColor(tier);
-  const gold = perfectScore && tier === "Generational";
+  const gold = perfectScore && tier === "Elite";
   const className =
     "inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide";
   const style = {

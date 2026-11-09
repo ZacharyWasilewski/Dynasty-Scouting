@@ -11,8 +11,8 @@ export interface TierDefinition {
  * range is [min, next tier's min).
  */
 export const TIER_DEFINITIONS: TierDefinition[] = [
-  { name: "Generational", min: 95, color: "#7C3AED" }, // royal purple
-  { name: "Elite", min: 84, color: "#2563EB" }, // royal blue
+  { name: "Elite", min: 95, color: "#7C3AED" }, // royal purple
+  { name: "Blue Chip", min: 84, color: "#2563EB" }, // royal blue
   // Starter and Roster Clogger below share their color with
   // --color-riser/--color-faller, which were separately found to fail
   // WCAG's 4.5:1 normal-text minimum against the light theme's
@@ -80,8 +80,8 @@ export function getTierForScore(score: number | undefined): Tier | undefined {
  * calibration bands and are different from the newer DD Score tiers.
  */
 export const POSITIONAL_TIER_DEFINITIONS: TierDefinition[] = [
-  { name: "Generational", min: 95, color: "#7C3AED" },
-  { name: "Elite", min: 90, color: "#2563EB" },
+  { name: "Elite", min: 95, color: "#7C3AED" },
+  { name: "Blue Chip", min: 90, color: "#2563EB" },
   { name: "Starter", min: 85, color: "#15803D" }, // see TIER_DEFINITIONS above
   { name: "Flex", min: 80, color: "#3F8F5F" },
   { name: "Upside Shot", min: 75, color: "#C99700" }, // see TIER_DEFINITIONS above

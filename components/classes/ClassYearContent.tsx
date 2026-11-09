@@ -16,7 +16,7 @@ import { MIN_TRACKED_CLASS_YEAR } from "@/lib/classCycle";
 // A prospect's tier for the "Class at a Glance" summary — now format-
 // aware. Real, reported bug this replaces: the summary used to
 // always compute against a fixed 1QB baseline no matter which format
-// the rankings table below was actually showing, so the Elite+ rate
+// the rankings table below was actually showing, so the Blue Chip+ rate
 // and tier distribution silently stopped matching the table the
 // moment someone toggled format — the same class of inconsistency
 // already fixed once on the player profile's Class Rank.
@@ -40,7 +40,7 @@ function eliteRate(prospects: Prospect[], format: LeagueFormat): number | undefi
     const tier = tierForProspect(p, format);
     if (!tier) continue;
     total++;
-    if (tier === "Generational" || tier === "Elite") eliteCount++;
+    if (tier === "Elite" || tier === "Blue Chip") eliteCount++;
   }
   return total > 0 ? (eliteCount / total) * 100 : undefined;
 }
@@ -62,7 +62,7 @@ function preDraftEliteCount(prospects: Prospect[], format: LeagueFormat): number
   let eliteCount = 0;
   for (const p of prospects) {
     const tier = preDraftTierForComparison(p, format);
-    if (tier === "Generational" || tier === "Elite") eliteCount++;
+    if (tier === "Elite" || tier === "Blue Chip") eliteCount++;
   }
   return eliteCount;
 }
@@ -93,7 +93,7 @@ function finalizedHistoricalClassSizes(prospects: Prospect[], classYear: string)
 // Only about 48 players are drafted each year (4 rounds of 12), so class
 // strength is judged on the top 48 of a class rather than the whole board:
 // early devy boards carry many prospects who will never be drafted, and
-// counting them would dilute the Elite+ rate. The same top-48 rule is applied
+// counting them would dilute the Blue Chip+ rate. The same top-48 rule is applied
 // to every historical class so the comparison is like for like.
 const CLASS_POOL_SIZE = 48;
 
@@ -104,7 +104,7 @@ function topPool(prospects: Prospect[], format: LeagueFormat): Prospect[] {
     .slice(0, CLASS_POOL_SIZE);
 }
 
-// Elite+ share of a live pre-draft class's top 48 by Pre-Draft Score. The
+// Blue Chip+ share of a live pre-draft class's top 48 by Pre-Draft Score. The
 // denominator is always the pool size, so a thin early board can't inflate it.
 function preDraftTopPoolEliteRate(prospects: Prospect[], format: LeagueFormat): number | undefined {
   const pool = [...prospects]
@@ -115,7 +115,7 @@ function preDraftTopPoolEliteRate(prospects: Prospect[], format: LeagueFormat): 
   return (preDraftEliteCount(pool, format) / CLASS_POOL_SIZE) * 100;
 }
 
-// The benchmark for an upcoming class remains the actual average Elite+ rate
+// The benchmark for an upcoming class remains the actual average Blue Chip+ rate
 // produced by finalized drafted rookie classes. Only the live devy class uses
 // the size-normalized denominator, because its early prospect pool is inflated.
 function averageHistoricalClassEliteRate(
@@ -329,7 +329,7 @@ export function ClassYearContent({
                   </span>
                 )}
                 {summary.classEliteRate !== undefined && (
-                  <span><span className="font-data text-base font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Elite+ in top 48</span>
+                  <span><span className="font-data text-base font-semibold text-ink">{summary.classEliteRate.toFixed(0)}%</span> Blue Chip+ in top 48</span>
                 )}
                 {summary.topProspect && topTier && (
                   <span className="min-w-0">
@@ -344,7 +344,7 @@ export function ClassYearContent({
                 <span className="ml-auto hidden font-mono text-[11px] uppercase tracking-widest2 text-accent group-open/summary:inline">Hide ↑</span>
               </summary>
             <div className="flex flex-col gap-6 pt-4 pb-3 lg:flex-row lg:items-start lg:gap-12">
-              {/* The summary row already shows strength, Elite+ rate and the top
+              {/* The summary row already shows strength, Blue Chip+ rate and the top
                   prospect; this panel only adds what it doesn't. */}
               <div className="text-sm lg:w-72 lg:shrink-0">
                 {summary.classEliteRate !== undefined && summary.benchmark.rate !== undefined && (

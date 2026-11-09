@@ -80,7 +80,7 @@ export function PositionRankingsWithChart({
   // resolved outcomes across the two highest tiers specifically
   // (not a blended "overall" hit rate, which would dilute a
   // meaningful claim with tiers nobody expects to hit anyway).
-  const eliteAndAbove = hitRateByTier.filter((d) => d.tier === "Generational" || d.tier === "Elite");
+  const eliteAndAbove = hitRateByTier.filter((d) => d.tier === "Elite" || d.tier === "Blue Chip");
   const eliteResolvedTotal = eliteAndAbove.reduce((sum, d) => sum + d.count, 0);
   const eliteHitsTotal = eliteAndAbove.reduce(
     (sum, d) => sum + (d.hitRate !== null ? Math.round((d.hitRate / 100) * d.count) : 0),
@@ -107,13 +107,13 @@ export function PositionRankingsWithChart({
         <Container className="flex flex-col items-center gap-8 sm:flex-row sm:items-center">
           {eliteHitRate !== undefined && (
             <ScoreRing
-              label="Elite+ Hit Rate"
+              label="Blue Chip+ Hit Rate"
               value={eliteHitRate}
               decimals={0}
               suffix="%"
               size={128}
-              color={getTierColor("Elite")}
-              info={`Historical hit rate for ${theme.label.toLowerCase()} prospects graded Generational or Elite, the model's two highest tiers.`}
+              color={getTierColor("Blue Chip")}
+              info={`Historical hit rate for ${theme.label.toLowerCase()} prospects graded Elite or Blue Chip, the model's two highest tiers.`}
             />
           )}
           <p className="max-w-md text-center text-sm leading-relaxed text-ink-secondary sm:text-left">
@@ -121,7 +121,7 @@ export function PositionRankingsWithChart({
             {theme.label.toLowerCase()} graded.
             {eliteHitRate !== undefined && (
               <>
-                {" "}Prospects earning a Generational or Elite grade have hit{" "}
+                {" "}Prospects earning an Elite or Blue Chip grade have hit{" "}
                 <span className="font-semibold" style={{ color: theme.accent }}>
                   {eliteHitRate.toFixed(0)}% of the time
                 </span>{" "}

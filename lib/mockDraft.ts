@@ -54,8 +54,8 @@ export interface MockPick {
 }
 
 export const TIER_ORDER: Record<string, number> = {
-  Generational: 0,
-  Elite: 1,
+  Elite: 0,
+  "Blue Chip": 1,
   Starter: 2,
   Flex: 3,
   "Upside Shot": 4,

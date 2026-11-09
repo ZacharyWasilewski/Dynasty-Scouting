@@ -26,16 +26,16 @@ const POSITION_CALIBRATION_WEIGHT: Record<"QB" | "RB" | "WR" | "TE", number> = {
 // a circular import (see that file's own comment for the full
 // explanation). Imported back in above.
 
-export const DD_TIER_MIN: Record<Exclude<Tier, "Generational">, number> = {
+export const DD_TIER_MIN: Record<Exclude<Tier, "Elite">, number> = {
   "Roster Clogger": 0,
   "Taxi Squad": 30,
   Bench: 42,
   "Upside Shot": 53,
   Flex: 63,
   Starter: 74,
-  Elite: 84,
+  "Blue Chip": 84,
 };
-export const GENERATIONAL_MIN = 95;
+export const ELITE_MIN = 95;
 
 export interface DDScoreResult {
   ddScore: number;
@@ -260,8 +260,8 @@ function hitRateAdjustment(
 }
 
 function tierForScore(score: number): Tier {
-  if (score >= GENERATIONAL_MIN) return "Generational";
-  if (score >= DD_TIER_MIN.Elite) return "Elite";
+  if (score >= ELITE_MIN) return "Elite";
+  if (score >= DD_TIER_MIN["Blue Chip"]) return "Blue Chip";
   if (score >= DD_TIER_MIN.Starter) return "Starter";
   if (score >= DD_TIER_MIN.Flex) return "Flex";
   if (score >= DD_TIER_MIN["Upside Shot"]) return "Upside Shot";
@@ -442,7 +442,7 @@ export function logDDScoreValidation(prospects: Prospect[]): void {
 
     for (const tier of [
       "Roster Clogger", "Taxi Squad", "Bench", "Upside Shot",
-      "Flex", "Starter", "Elite", "Generational",
+      "Flex", "Starter", "Blue Chip", "Elite",
     ] as Tier[]) {
       const inTier = scored.filter((p) => getDDTier(p, format) === tier);
       const outcomes = inTier.filter((p) => p.hitMiss === "HIT" || p.hitMiss === "MISS");

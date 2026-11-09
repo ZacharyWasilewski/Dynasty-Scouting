@@ -5,8 +5,8 @@ import type { Prospect } from "@/types/prospect";
 const p = (id: string, fields: Partial<Prospect>): Prospect => ({ id, name: id, position: "WR", hasDraftData: true, ...fields });
 const format: LeagueFormatSelection = { qbFormat: "SF", tepFormat: "STANDARD" };
 const history = [
-  p("a", { hitMiss: "HIT", ddScoreSuperflex:98, tierSuperflex:"Generational", preDraftScore:96, rawScore:80 }),
-  p("b", { hitMiss: "MISS", ddScoreSuperflex:97, tierSuperflex:"Generational", preDraftScore:80, rawScore:96 }),
+  p("a", { hitMiss: "HIT", ddScoreSuperflex:98, tierSuperflex:"Elite", preDraftScore:96, rawScore:80 }),
+  p("b", { hitMiss: "MISS", ddScoreSuperflex:97, tierSuperflex:"Elite", preDraftScore:80, rawScore:96 }),
   p("c", { hitMiss: "MISS", ddScoreSuperflex:80, tierSuperflex:"Starter", preDraftScore:97, rawScore:80 }),
   p("d", { hitMiss: "MISS", ddScoreSuperflex:80, tierSuperflex:"Starter", preDraftScore:98, rawScore:70 }),
   p("push", { finish: "RP", rawScore:99, preDraftScore:99 }),
@@ -16,24 +16,24 @@ const history = [
 ];
 describe("stage-specific historical tier cohorts", () => {
   it("produces independent DD, Pre-Draft and Raw rates at the same displayed tier", () => {
-    const row = (stage: "dd" | "preDraft" | "raw") => computeHitRateByPositionAndTier(history,"WR",format,["Generational"],stage)[0]!;
+    const row = (stage: "dd" | "preDraft" | "raw") => computeHitRateByPositionAndTier(history,"WR",format,["Elite"],stage)[0]!;
     expect(row("dd")).toMatchObject({ count:2, hitRate:50 });
     expect(row("preDraft").count).toBe(3);
     expect(row("preDraft").hitRate).toBeCloseTo(100/3);
     expect(row("raw")).toMatchObject({ count:1, hitRate:0 });
   });
   it("does not borrow DD scores or count unresolved outcomes when early scores are missing", () => {
-    const data=[p("no-early",{hitMiss:"HIT",ddScoreSuperflex:100,tierSuperflex:"Generational"})];
-    expect(computeHitRateByPositionAndTier(data,"WR",format,["Generational"],"preDraft")[0]).toMatchObject({hitRate:null,count:0});
-    expect(computeHitRateByPositionAndTier(data,"WR",format,["Generational"],"raw")[0]).toMatchObject({hitRate:null,count:0});
+    const data=[p("no-early",{hitMiss:"HIT",ddScoreSuperflex:100,tierSuperflex:"Elite"})];
+    expect(computeHitRateByPositionAndTier(data,"WR",format,["Elite"],"preDraft")[0]).toMatchObject({hitRate:null,count:0});
+    expect(computeHitRateByPositionAndTier(data,"WR",format,["Elite"],"raw")[0]).toMatchObject({hitRate:null,count:0});
   });
   it.each(["raw", "preDraft"] as const)("applies QB and TE adjustments to historical %s scores in all four formats", stage => {
     const qb=[p("qb",{position:"QB",hitMiss:"HIT",rawScore:90,preDraftScore:90})];
     const te=[p("te",{position:"TE",hitMiss:"MISS",rawScore:97,preDraftScore:97})];
     for (const qbFormat of ["1QB","SF"] as const) for (const tepFormat of ["STANDARD","TEP"] as const) {
       const sel={qbFormat,tepFormat};
-      const qbTier=qbFormat==="SF" ? "Generational":"Starter";
-      const teTier=tepFormat==="TEP" ? "Generational":"Elite";
+      const qbTier=qbFormat==="SF" ? "Elite":"Starter";
+      const teTier=tepFormat==="TEP" ? "Elite":"Blue Chip";
       expect(computeHitRateByPositionAndTier(qb,"QB",sel,[qbTier],stage)[0]).toMatchObject({hitRate:100,count:1});
       expect(computeHitRateByPositionAndTier(te,"TE",sel,[teTier],stage)[0]).toMatchObject({hitRate:0,count:1});
     }

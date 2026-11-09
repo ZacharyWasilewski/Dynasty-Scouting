@@ -41,8 +41,8 @@ const DEFAULT_DIR: Record<SortKey, "asc" | "desc"> = {
 };
 
 const TIER_ORDER: Record<Tier, number> = {
-  Generational: 1,
-  Elite: 2,
+  Elite: 1,
+  "Blue Chip": 2,
   Starter: 3,
   Flex: 4,
   "Upside Shot": 5,

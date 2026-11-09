@@ -31,8 +31,8 @@ export type DraftRound = 1 | 2 | 3 | 4 | 5 | 6 | 7 | "UDFA";
 export type DraftClassYear = string;
 
 export type Tier =
-  | "Generational"
   | "Elite"
+  | "Blue Chip"
   | "Starter"
   | "Flex"
   | "Upside Shot"
@@ -68,10 +68,10 @@ export interface SubScore {
   label: string;
   value?: number; // 0-100, rounded — used for percentile-based scores
   text?: string; // for scores that are a text label, not a percentile (e.g. "QB1")
-  /** Force the Elite tier color regardless of the computed percentile
+  /** Force the Blue Chip tier color regardless of the computed percentile
    *  (e.g. an elite breakout-age "18.5+" that should always read as
    *  a max score, but shouldn't visually look identical to a real
-   *  Generational-tier percentile). */
+   *  Elite-tier percentile). */
   isElite?: boolean;
   /** Not a real score at all — shown greyed-out with "TBD" so a
    *  pre-draft prospect's sub-score count/layout still matches a

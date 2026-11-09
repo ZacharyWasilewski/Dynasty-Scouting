@@ -40,7 +40,7 @@ export function RankingsPageContent({ prospects }: { prospects: Prospect[] }) {
 
   const tierCounts = tierCountsForFormat(prospects, format);
   const maxCount = Math.max(...TIER_DEFINITIONS.map((t) => tierCounts[t.name] ?? 0));
-  const generationalCount = tierCounts["Generational"] ?? 0;
+  const eliteCount = tierCounts["Elite"] ?? 0;
 
   return (
     <>
@@ -49,11 +49,11 @@ export function RankingsPageContent({ prospects }: { prospects: Prospect[] }) {
           <div className="lg:order-2">
             <p className="max-w-xl text-sm leading-relaxed text-ink-secondary">
               Every graded prospect, ranked by Dynasty Database Score.
-              {generationalCount > 0 && (
+              {eliteCount > 0 && (
                 <>
                   {" "}Only{" "}
-                  <Link href="/players?tier=Generational" className="font-semibold text-accent hover:underline">
-                    {generationalCount} {generationalCount === 1 ? "has" : "have"} ever cleared a Generational grade
+                  <Link href="/players?tier=Elite" className="font-semibold text-accent hover:underline">
+                    {eliteCount} {eliteCount === 1 ? "has" : "have"} ever cleared an Elite grade
                   </Link>
                   {". It is the rarest tier in the model."}
                 </>

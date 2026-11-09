@@ -61,7 +61,7 @@ describe("getDDScore / getDDTier / getRankForFormat", () => {
     ddScoreSuperflex: 88,
     ddScore1QBTEP: 92,
     ddScoreSuperflexTEP: 89,
-    tier1QB: "Elite",
+    tier1QB: "Blue Chip",
     tierSuperflex: "Starter",
     ddRank1QB: 5,
     ddRankSuperflex: 12,
@@ -75,7 +75,7 @@ describe("getDDScore / getDDTier / getRankForFormat", () => {
   });
 
   it("reads the correct tier field per format", () => {
-    expect(getDDTier(p, "1QB")).toBe("Elite");
+    expect(getDDTier(p, "1QB")).toBe("Blue Chip");
     expect(getDDTier(p, "SUPERFLEX")).toBe("Starter");
   });
 

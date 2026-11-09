@@ -22,9 +22,9 @@ beforeEach(()=>{
  mocks.params=new URLSearchParams();mocks.replace.mockReset().mockImplementation((url:string)=>{mocks.params=new URLSearchParams(url.split("?")[1]);});
 });
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
-const prospects:Prospect[]=[{id:"early",name:"Early Player",position:"WR",hasDraftData:false,preDraftScore:88,hitMiss:"MISS",draftClass:"2027"},{id:"dd",name:"Drafted Player",position:"WR",hasDraftData:true,ddScoreSuperflex:98,tierSuperflex:"Generational",hitMiss:"HIT"}];
+const prospects:Prospect[]=[{id:"early",name:"Early Player",position:"WR",hasDraftData:false,preDraftScore:88,hitMiss:"MISS",draftClass:"2027"},{id:"dd",name:"Drafted Player",position:"WR",hasDraftData:true,ddScoreSuperflex:98,tierSuperflex:"Elite",hitMiss:"HIT"}];
 it("starts mobile advanced filters collapsed, preserves their state on reopening and clears every filter",async()=>{
- mocks.params=new URLSearchParams("tier=Elite&stage=preDraft&outcome=MISS&details=outcomes&format=1QB");
+ mocks.params=new URLSearchParams("tier=Blue Chip&stage=preDraft&outcome=MISS&details=outcomes&format=1QB");
  const render=()=>root.render(React.createElement(RankingsTable,{prospects}));await act(async()=>render());
  const toggle=Array.from(host.querySelectorAll("button")).find(b=>b.textContent?.startsWith("Advanced filters"))!;
  expect(toggle.getAttribute("aria-expanded")).toBe("false");expect(toggle.textContent).toContain("4 active");
@@ -59,6 +59,6 @@ it("saves all picks with draft-time score, tier and image metadata for the grid"
  picks:[{overall:1,round:1,slot:1,playerId:"p1",userPick:false}],prospectById:new Map([["p1",player]]),gradeRows:[{pick:{overall:1,round:1,slot:1,playerId:"p1",userPick:true},player,grade:"A",valueGain:0,scoreGap:0,tierGap:0}],overallGrade:"A",ddValueCaptured:0,onReset:vi.fn(),onViewBoard:vi.fn()
  })));
  const call=vi.mocked(fetch).mock.calls.find(([url])=>url==="/api/mock-drafts")!;const payload=JSON.parse(call[1]!.body as string);
- expect(payload.settings.fullBoard[0]).toMatchObject({overall:1,playerName:"Saved Player",score:88,tier:"Elite",photoUrl:player.photoUrl,scoreLabel:"Pre-Draft",userPick:false});
+ expect(payload.settings.fullBoard[0]).toMatchObject({overall:1,playerName:"Saved Player",score:88,tier:"Blue Chip",photoUrl:player.photoUrl,scoreLabel:"Pre-Draft",userPick:false});
  expect(payload.settings.slot).toBe(2);
 });

@@ -46,7 +46,7 @@ export default async function ClassYearPage({ params }: { params: { year: string
         </Container>
       </section>
 
-      {/* The "Class at a Glance" summary (tier distribution, Elite+
+      {/* The "Class at a Glance" summary (tier distribution, Blue Chip+
           rate vs. the database average, highest graded prospect) now
           lives inside ClassYearContent, it has to be format-aware
           (recomputed live as the rankings table's own format toggle

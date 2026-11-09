@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, type ReactNode } from "react";
-import { User, CheckCircle2, XCircle, MinusCircle, ArrowLeft, BookOpen, ArrowRight } from "@/components/ui/SiteIcons";
+import { User, CheckCircle2, XCircle, MinusCircle, ArrowLeft, BookOpen, ArrowRight, Sparkles } from "@/components/ui/SiteIcons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { TierBadge } from "@/components/rankings/TierBadge";
@@ -14,6 +14,7 @@ import { ScoreRing } from "@/components/profile/ScoreRing";
 import { GradeDisplay } from "@/components/profile/GradeDisplay";
 import { SubScoreRadar } from "@/components/profile/SubScoreRadar";
 import { DecisionSignals } from "@/components/profile/DecisionSignals";
+import { isGenerationalProfile } from "@/lib/generational";
 import { getTierColor, getTierForScore, getOpportunityColor, qualitativeLabelForPercentile } from "@/lib/tiers";
 import { subScoreSlug, subScoreDescription } from "@/lib/methodologySlugs";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
@@ -377,11 +378,23 @@ export function ProfileHeader({
                   <div className="pb-1">
                     <div
                       className="inline-block px-1.5"
-                      style={displayScore === 100 && tier === "Generational" ? { WebkitTextStroke: "1px #FACC15", paintOrder: "stroke fill" } : undefined}
+                      style={displayScore === 100 && tier === "Elite" ? { WebkitTextStroke: "1px #FACC15", paintOrder: "stroke fill" } : undefined}
                     >
                       <div className="font-headline text-lg uppercase leading-none sm:text-xl" style={{ color: tier ? getTierColor(tier) : undefined }}>{tier ?? "—"}</div>
                     </div>
                     <div className="mt-1 text-[10px] text-ink-tertiary">{isDrafted ? "Dynasty Database Score" : usesRawScore ? "Raw Score" : "Pre-Draft Score"}</div>
+                    {isGenerationalProfile(prospect) && (
+                      <div className="mt-1.5">
+                        <div
+                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{ borderColor: "#C99700", color: "#8A6608", background: "rgba(250, 204, 21, 0.18)" }}
+                        >
+                          <Sparkles className="h-3 w-3" aria-hidden="true" />
+                          Generational
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-ink-tertiary">95th percentile or better on every subscore</div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -520,7 +533,7 @@ export function ProfileHeader({
                 <p className="text-[10px] font-semibold text-ink-secondary">Subscores</p>
                 <div className="mt-3 grid gap-x-5 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   {prospect.subScores?.map((score) => {
-                    const color = score.isPending ? "var(--color-border-strong)" : score.value === 100 ? "#7C3AED" : score.isElite ? getTierColor("Elite") : score.value !== undefined ? getTierColor(getTierForScore(score.value) ?? "Roster Clogger") : getOpportunityColor(prospect.position, score.text);
+                    const color = score.isPending ? "var(--color-border-strong)" : score.value === 100 ? "#7C3AED" : score.isElite ? getTierColor("Blue Chip") : score.value !== undefined ? getTierColor(getTierForScore(score.value) ?? "Roster Clogger") : getOpportunityColor(prospect.position, score.text);
                     const numeric = score.value !== undefined && !score.isPending;
                     return <div key={score.label} className="flex items-center gap-2 border-b border-border py-2 last:border-b-0"><ScoreRing label="" value={score.value} text={score.text} size={48} decimals={0} info={subScoreDescription(prospect.position, score.label)} infoHref={`/methodology#${subScoreSlug(prospect.position, score.label)}`} color={color} /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><span className="truncate text-[10px] text-ink-tertiary">{score.label}</span><span className="text-[10px] font-semibold text-ink">{score.isPending ? "TBD" : numeric ? qualitativeLabelForPercentile(score.value as number) : ""}</span></div>{numeric && <div className="mt-1 h-1 bg-border"><div className="h-full" style={{ width: `${score.value}%`, backgroundColor: color }} /></div>}</div></div>;
                   })}

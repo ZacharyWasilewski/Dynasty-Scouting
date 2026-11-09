@@ -29,7 +29,7 @@ export function ModelValidationStory({ prospects }: { prospects: Prospect[] }) {
   const lowHit = [...hits].sort((a, b) => a.score - b.score)[0];
   const topTier = scored.filter(({ p }) => {
     const tier = tierForFormat(p, selection);
-    return tier === "Generational" || tier === "Elite";
+    return tier === "Elite" || tier === "Blue Chip";
   });
   const topTierHitRate = topTier.length ? (topTier.filter(({ p }) => p.hitMiss === "HIT").length / topTier.length) * 100 : undefined;
 
@@ -51,7 +51,7 @@ export function ModelValidationStory({ prospects }: { prospects: Prospect[] }) {
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-secondary">This is the model facing its own track record. There are no hand-picked success stories. The same live sheet data that powers the rankings determines the sample, the scores, and the outcomes shown here.</p>
             <div className="mt-6 grid grid-cols-2 gap-px border border-border bg-border">
               <div className="bg-surface p-4"><Target className="h-4 w-4 text-accent" /><p className="mt-3 font-headline text-3xl text-ink">{scored.length}</p><p className="mt-1 text-[10px] text-ink-tertiary">Resolved grades</p></div>
-              <div className="bg-surface p-4"><ShieldCheck className="h-4 w-4 text-accent" /><p className="mt-3 font-headline text-3xl text-ink">{topTierHitRate === undefined ? "—" : `${Math.round(topTierHitRate)}%`}</p><p className="mt-1 text-[10px] text-ink-tertiary">Elite+ hit rate</p></div>
+              <div className="bg-surface p-4"><ShieldCheck className="h-4 w-4 text-accent" /><p className="mt-3 font-headline text-3xl text-ink">{topTierHitRate === undefined ? "—" : `${Math.round(topTierHitRate)}%`}</p><p className="mt-1 text-[10px] text-ink-tertiary">Blue Chip+ hit rate</p></div>
             </div>
             <InPageAnchor targetId="performance" extraOffsetId="analytics-quick-nav" className="mt-6 inline-flex items-center gap-1.5 text-[10px] text-accent hover:underline">See the full backtest <ArrowRight className="h-3.5 w-3.5" /></InPageAnchor>
           </div>

@@ -37,7 +37,7 @@ export const revalidate = 0;
  * deep end, for anyone who wants to keep going).
  *
  * ModelOverview moved ahead of NextClassSpotlight specifically:
- * NextClassSpotlight renders real tier badges ("Elite", "Flex", etc.)
+ * NextClassSpotlight renders real tier badges ("Blue Chip", "Flex", etc.)
  * and raw 0-100 scores, and previously did so before ModelOverview
  * ever explained what a tier or the scale meant — a first-time
  * visitor hit real jargon before its definition. Nothing else about

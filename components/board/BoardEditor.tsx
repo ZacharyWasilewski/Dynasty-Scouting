@@ -483,7 +483,7 @@ export function BoardEditor({ prospects, classYear }: { prospects: Prospect[]; c
                                       : sub.value === 100
                                       ? "#7C3AED"
                                       : sub.isElite
-                                      ? getTierColor("Elite")
+                                      ? getTierColor("Blue Chip")
                                       : sub.value !== undefined
                                       ? getTierColor(getTierForScore(sub.value) ?? "Roster Clogger")
                                       : getOpportunityColor(p.position, sub.text)

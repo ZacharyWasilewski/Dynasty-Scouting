@@ -55,7 +55,7 @@ export function ModelOverview() {
         </div>
 
         {/* Grid instead of flex-wrap — tier names vary a lot in
-            length ("Generational" vs "Flex"), which made free-
+            length ("Roster Clogger" vs "Flex"), which made free-
             flowing flex-wrap wrap ragged, uneven numbers of items
             per row on narrow screens (looked jumbled/misaligned on
             mobile specifically). A fixed column count wraps

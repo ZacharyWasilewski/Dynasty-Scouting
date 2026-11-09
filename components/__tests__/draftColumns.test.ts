@@ -9,7 +9,7 @@ afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.unstubAl
 it.each([true,false])("keeps numeric tokens whole and only allows picks on the user's turn (%s)",async canPick=>{
  const makePick=vi.fn(),toggleQueued=vi.fn();
  const p={id:"long-name",name:"Christopher Long-Name Jr.",position:"WR" as const,hasDraftData:false,preDraftScore:100,subScores:[{label:"Breakout Age",value:100}]};
- await act(async()=>root.render(React.createElement(AvailablePlayerRow,{p,rank:1000,score:100,tier:"Generational",cr:1141,diff:0,canPick,isSuggested:false,positionTierHitRates:new Map([["preDraft:WR:Generational",100],["sample:preDraft:WR:Generational",1141]]),queue:[],toggleQueued,setExpandedPlayerId:vi.fn(),closePlayerSearch:vi.fn(),makePick})));
+ await act(async()=>root.render(React.createElement(AvailablePlayerRow,{p,rank:1000,score:100,tier:"Elite",cr:1141,diff:0,canPick,isSuggested:false,positionTierHitRates:new Map([["preDraft:WR:Elite",100],["sample:preDraft:WR:Elite",1141]]),queue:[],toggleQueued,setExpandedPlayerId:vi.fn(),closePlayerSearch:vi.fn(),makePick})));
  const stats=Array.from(host.querySelectorAll('.mock-player-stat p')); expect(stats.some(p=>p.textContent==='100%')).toBe(true);
  for(const stat of stats){expect(stat.classList.contains('whitespace-nowrap')).toBe(true);expect(stat.classList.contains('break-words')).toBe(false);}
  const pick=host.querySelector('[aria-label="Pick Christopher Long-Name Jr."]') as HTMLButtonElement|null;expect(Boolean(pick)).toBe(canPick);

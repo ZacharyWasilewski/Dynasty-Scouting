@@ -29,7 +29,7 @@ export function GradeDisplay({
   const [showPopup, setShowPopup] = useState(false);
   const [displayValue, setDisplayValue] = useState(value);
   const previousValue = useRef(value);
-  const isPerfect = value === 100 && tierLabel === "Generational";
+  const isPerfect = value === 100 && tierLabel === "Elite";
 
   useEffect(() => {
     const from = previousValue.current;

@@ -141,8 +141,8 @@ export interface TierHitRateDatum {
  * different ways.
  */
 /**
- * A single combined hit rate across a set of tiers (e.g. Generational
- * + Elite) — for a homepage "here's the model's real track record"
+ * A single combined hit rate across a set of tiers (e.g. Elite
+ * + Blue Chip) — for a homepage "here's the model's real track record"
  * stat, where a per-tier breakdown is more detail than the moment
  * calls for. Computed directly from real hit/miss outcomes, the same
  * ones the full Analytics page's tier chart uses — never a made-up

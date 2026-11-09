@@ -51,7 +51,7 @@ it("shows a load error instead of empty draft history, retries, and preserves dr
  expect(host.textContent).not.toContain("2027 Mock Draft");expect(host.textContent).toContain("will show up here");
 });
 it("opens tier help by tapping and closes it with Escape",async()=>{
- await act(async()=>root.render(React.createElement(TierHitRateInfo,{stage:"Pre-Draft",position:"WR",tier:"Elite",format:"Superflex",count:7})));
+ await act(async()=>root.render(React.createElement(TierHitRateInfo,{stage:"Pre-Draft",position:"WR",tier:"Blue Chip",format:"Superflex",count:7})));
  const trigger=host.querySelector("button")!;trigger.focus();await act(async()=>trigger.click());
  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("7 resolved prospects");
  expect(document.querySelector('[role="dialog"]')?.textContent).toContain("RP pushes");

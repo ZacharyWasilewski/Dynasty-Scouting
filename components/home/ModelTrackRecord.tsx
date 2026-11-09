@@ -16,7 +16,7 @@ import type { Prospect } from "@/types/prospect";
  * a copy bug.
  *
  * Real, confirmed gap this fixes: computeCombinedHitRate accepts a
- * format parameter (Elite+ hit rate genuinely differs by league
+ * format parameter (Blue Chip+ hit rate genuinely differs by league
  * format, the same way it does on every Position page), but this
  * call site never passed one, briefly rendering the wrong default before the global preference loaded
  * of the site's actual sticky format preference. This page has no
@@ -34,7 +34,7 @@ export function ModelTrackRecord({ prospects }: { prospects: Prospect[] }) {
   }, []);
 
   const stats = overallStats(prospects);
-  const topTier = computeCombinedHitRate(prospects, ["Generational", "Elite"], selectionFromLeagueFormat(format));
+  const topTier = computeCombinedHitRate(prospects, ["Elite", "Blue Chip"], selectionFromLeagueFormat(format));
 
   const modelPositions = new Set(prospects.filter((p) => p.position === "QB" || p.position === "RB" || p.position === "WR" || p.position === "TE").map((p) => p.position)).size;
 
@@ -93,10 +93,10 @@ export function ModelTrackRecord({ prospects }: { prospects: Prospect[] }) {
                 <span className="text-4xl sm:text-5xl">%</span>
               </p>
               <p className="mt-2 font-headline text-sm uppercase text-ink-tertiary">
-                Elite+ Tier Hit Rate
+                Blue Chip+ Tier Hit Rate
               </p>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-tertiary">
-                Across {topTier.sampleSize} resolved Generational/Elite grades since 2010.
+                Across {topTier.sampleSize} resolved Elite/Blue Chip grades since 2010.
               </p>
             </div>
           )}
