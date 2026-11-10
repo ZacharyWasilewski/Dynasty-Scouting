@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, type ReactNode } from "react";
-import { User, CheckCircle2, XCircle, MinusCircle, ArrowLeft, BookOpen, ArrowRight, Sparkles } from "@/components/ui/SiteIcons";
+import { User, CheckCircle2, XCircle, MinusCircle, ArrowLeft, BookOpen, ArrowRight } from "@/components/ui/SiteIcons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { TierBadge } from "@/components/rankings/TierBadge";
@@ -14,7 +14,6 @@ import { ScoreRing } from "@/components/profile/ScoreRing";
 import { GradeDisplay } from "@/components/profile/GradeDisplay";
 import { SubScoreRadar } from "@/components/profile/SubScoreRadar";
 import { DecisionSignals } from "@/components/profile/DecisionSignals";
-import { isGenerationalProfile } from "@/lib/generational";
 import { getTierColor, getTierForScore, getOpportunityColor, qualitativeLabelForPercentile } from "@/lib/tiers";
 import { subScoreSlug, subScoreDescription } from "@/lib/methodologySlugs";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
@@ -383,18 +382,6 @@ export function ProfileHeader({
                       <div className="font-headline text-lg uppercase leading-none sm:text-xl" style={{ color: tier ? getTierColor(tier) : undefined }}>{tier ?? "—"}</div>
                     </div>
                     <div className="mt-1 text-[10px] text-ink-tertiary">{isDrafted ? "Dynasty Database Score" : usesRawScore ? "Raw Score" : "Pre-Draft Score"}</div>
-                    {isGenerationalProfile(prospect) && (
-                      <div className="mt-1.5">
-                        <div
-                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                          style={{ borderColor: "#C99700", color: "#8A6608", background: "rgba(250, 204, 21, 0.18)" }}
-                        >
-                          <Sparkles className="h-3 w-3" aria-hidden="true" />
-                          Generational
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-ink-tertiary">Average subscore above the 90th percentile</div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
