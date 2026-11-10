@@ -112,21 +112,21 @@ export function TierHitRates({
             <div key={row.tier}>
               <button
                 onClick={() => toggle(displayName)}
-                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors duration-150 hover:bg-surface-raised"
+                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left sm:gap-4 sm:px-4 transition-colors duration-150 hover:bg-surface-raised"
               >
-                <span className="flex min-w-0 items-center gap-2">
+                <span className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                   <ChevronDown
                     className={`h-3.5 w-3.5 shrink-0 text-ink-tertiary transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                   />
-                  <span className="min-w-0 truncate font-mono text-sm font-medium" style={{ color }}>
+                  <span className="whitespace-nowrap font-mono text-xs font-medium sm:text-sm" style={{ color }}>
                     {displayName}
                   </span>
                 </span>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                   <span className="whitespace-nowrap font-data text-[11px] text-ink-tertiary sm:text-xs" title={`${weighted ? row.valueCount : row.count} evaluated; ${row.total} total`}>
                     n={weighted ? row.valueCount : row.count}
                   </span>
-                  <div className="h-1.5 w-24 bg-void sm:w-40">
+                  <div className="h-1.5 w-10 shrink bg-void min-[400px]:w-14 sm:w-40">
                     <div
                       className="h-1.5 transition-all duration-700 ease-out"
                       style={{
@@ -135,7 +135,7 @@ export function TierHitRates({
                       }}
                     />
                   </div>
-                  <span className="w-14 text-right font-data text-sm text-ink">
+                  <span className="w-12 shrink-0 text-right font-data text-sm text-ink sm:w-14">
                     {formatValue(rowValue, weighted)}
                   </span>
                 </div>
