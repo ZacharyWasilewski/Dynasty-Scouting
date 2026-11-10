@@ -4,9 +4,10 @@ import { isGenerationalProfile } from "../generational";
 const s = (label: string, value?: number, extra: object = {}) => ({ label, value, ...extra });
 
 describe("isGenerationalProfile", () => {
-  it("requires 95+ on every percentile subscore", () => {
-    expect(isGenerationalProfile({ subScores: [s("Size", 95), s("Speed", 99), s("Age", 100)] })).toBe(true);
-    expect(isGenerationalProfile({ subScores: [s("Size", 95), s("Speed", 94.9), s("Age", 100)] })).toBe(false);
+  it("requires an average percentile above 90", () => {
+    expect(isGenerationalProfile({ subScores: [s("Size", 85), s("Speed", 95), s("Age", 100)] })).toBe(true); // avg 93.3
+    expect(isGenerationalProfile({ subScores: [s("Size", 80), s("Speed", 95), s("Age", 95)] })).toBe(false); // avg 90
+    expect(isGenerationalProfile({ subScores: [s("Size", 70), s("Speed", 95), s("Age", 100)] })).toBe(false); // avg 88.3
   });
   it("ignores text and pending subscores", () => {
     expect(

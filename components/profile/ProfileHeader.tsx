@@ -392,7 +392,7 @@ export function ProfileHeader({
                           <Sparkles className="h-3 w-3" aria-hidden="true" />
                           Generational
                         </div>
-                        <div className="mt-0.5 text-[10px] text-ink-tertiary">95th percentile or better on every subscore</div>
+                        <div className="mt-0.5 text-[10px] text-ink-tertiary">Average subscore above the 90th percentile</div>
                       </div>
                     )}
                   </div>
