@@ -1,34 +1,25 @@
 import type { LeagueFormat } from "@/lib/ddScore";
 
-const KEY = "dd_global_format";
 const VALID: LeagueFormat[] = ["1QB", "1QB_TEP", "SUPERFLEX", "SUPERFLEX_TEP"];
 export const GLOBAL_FORMAT_EVENT = "dd:format-change";
 
 export const DEFAULT_FORMAT: LeagueFormat = "SUPERFLEX";
 
 /**
- * Format precedence used everywhere on the site:
- *   1. an explicit, valid ?format= in the URL (shared links, in-page links),
- *   2. the user's saved preference (localStorage, written only when the user
- *      actually picks a format),
- *   3. Superflex with TEP off.
- * This returns layers 2 and 3. Call it from an effect (not a render-time
- * initializer) so the first client render matches the server render.
+ * League format is page-local. Every page starts on Superflex with TEP off,
+ * unless the URL carries an explicit, valid ?format= (an in-page link or a
+ * shared link). The only memory is Back/Forward restoration of the exact page
+ * you left (lib/formatPersistence). Nothing is carried from one page to the
+ * next, so this always returns the default; it stays as the single place
+ * callers ask "what format do I start in?".
  */
 export function getGlobalFormat(): LeagueFormat {
-  if (typeof window === "undefined") return DEFAULT_FORMAT;
-  try {
-    const raw = localStorage.getItem(KEY);
-    return isValidFormat(raw) ? raw : DEFAULT_FORMAT;
-  } catch {
-    return DEFAULT_FORMAT;
-  }
+  return DEFAULT_FORMAT;
 }
 
-/** Layers 1-3 together, for callers that have the raw URL value in hand. */
+/** URL value when valid, otherwise the default. */
 export function resolveFormat(urlValue: string | null | undefined): LeagueFormat {
-  const fromUrl = parseFormatParam(urlValue);
-  return fromUrl ?? getGlobalFormat();
+  return parseFormatParam(urlValue) ?? DEFAULT_FORMAT;
 }
 
 const PARAM_TO_FORMAT: Record<string, LeagueFormat> = {
@@ -46,32 +37,17 @@ export function parseFormatParam(value: string | null | undefined): LeagueFormat
 }
 
 /**
- * Call whenever a page's own format changes. Writes localStorage
- * immediately (works instantly, every device, logged in or not), and
- * fire-and-forgets a save to the account too — the API route itself
- * is the auth gate, so this is safe to call unconditionally; a
- * logged-out request just no-ops server-side.
+ * Call whenever a page's own format changes. Only notifies listeners on the
+ * current page (e.g. the homepage sections); nothing is saved for other pages
+ * or later visits.
  */
 export function reportFormatUsed(format: LeagueFormat) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(KEY, format);
-  } catch {
-    // Private browsing / storage disabled — the account save below
-    // still gets attempted for a logged-in user; a guest just won't
-    // have it stick locally, which was already the ceiling before.
-  }
-  try {
     window.dispatchEvent(new CustomEvent<LeagueFormat>(GLOBAL_FORMAT_EVENT, { detail: format }));
   } catch {
-    // A storage/API failure should never prevent the visible page from using
-    // the newly selected format.
+    // Never let a listener failure block the visible page.
   }
-  fetch("/api/preferences/format", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format }),
-  }).catch(() => {});
 }
 
 export function isValidFormat(value: string | null): value is LeagueFormat {

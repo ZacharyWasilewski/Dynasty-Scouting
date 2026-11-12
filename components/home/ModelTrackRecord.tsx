@@ -27,7 +27,7 @@ import type { Prospect } from "@/types/prospect";
 export function ModelTrackRecord({ prospects }: { prospects: Prospect[] }) {
   const [format, setFormat] = useState<LeagueFormat>("SUPERFLEX");
   useEffect(() => {
-    const sync = () => setFormat(getGlobalFormat());
+    const sync = (event?: Event) => setFormat((event as CustomEvent<LeagueFormat> | undefined)?.detail ?? getGlobalFormat());
     sync();
     window.addEventListener(GLOBAL_FORMAT_EVENT, sync);
     return () => window.removeEventListener(GLOBAL_FORMAT_EVENT, sync);

@@ -238,6 +238,18 @@ export function ProfileHeader({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/players"
+            onClick={(event) => {
+              // Came from another page on this site: go back to it exactly as
+              // it was (filters, sort and league format included).
+              try {
+                if (document.referrer && new URL(document.referrer).origin === window.location.origin && window.history.length > 1) {
+                  event.preventDefault();
+                  router.back();
+                }
+              } catch {
+                // Fall through to the plain /players link.
+              }
+            }}
             className="flex w-fit items-center gap-1.5 text-[10px] text-ink-tertiary transition-colors hover:text-accent"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

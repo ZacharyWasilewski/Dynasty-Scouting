@@ -1,10 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { GLOBAL_FORMAT_EVENT, getGlobalFormat, parseFormatParam } from "@/lib/globalFormat";
-import { FORMAT_QUERY_PARAM } from "@/lib/playerLinks";
-
 /** Paths whose pages read ?format=, so links to them should carry it. */
 const FORMAT_AWARE_PREFIXES = ["/players", "/classes", "/positions", "/compare", "/board", "/analytics"];
 
@@ -22,21 +17,9 @@ export function withFormatParam(href: string, format: string | null | undefined)
 }
 
 /**
- * The format query value header/footer links should carry: the page's own
- * explicit ?format= when it has one, otherwise the saved preference. Read in
- * an effect so the first client render matches the server render.
+ * Header/footer links no longer carry a format: switching pages starts the new
+ * page on its own default. Kept so existing callers stay valid.
  */
 export function useFormatQuery(): string | null {
-  const pathname = usePathname();
-  const [value, setValue] = useState<string | null>(null);
-  useEffect(() => {
-    const compute = () => {
-      const explicit = parseFormatParam(new URLSearchParams(window.location.search).get("format"));
-      setValue(FORMAT_QUERY_PARAM[explicit ?? getGlobalFormat()]);
-    };
-    compute();
-    window.addEventListener(GLOBAL_FORMAT_EVENT, compute);
-    return () => window.removeEventListener(GLOBAL_FORMAT_EVENT, compute);
-  }, [pathname]);
-  return value;
+  return null;
 }

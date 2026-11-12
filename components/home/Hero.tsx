@@ -47,7 +47,7 @@ function topByPosition(prospects: Prospect[], format: LeagueFormat): { prospect:
 export function Hero({ prospects, activeClassYear }: { prospects: Prospect[]; activeClassYear?: string }) {
   const [format, setFormat] = useState<LeagueFormat>("SUPERFLEX");
   useEffect(() => {
-    const sync = () => setFormat(getGlobalFormat());
+    const sync = (event?: Event) => setFormat((event as CustomEvent<LeagueFormat> | undefined)?.detail ?? getGlobalFormat());
     sync();
     window.addEventListener(GLOBAL_FORMAT_EVENT, sync);
     return () => window.removeEventListener(GLOBAL_FORMAT_EVENT, sync);

@@ -27,13 +27,13 @@ describe("league format precedence", () => {
     expect(DEFAULT_FORMAT).toBe("SUPERFLEX");
   });
 
-  it("uses a saved preference when the URL has none", () => {
-    stubStorage("1QB_TEP");
-    expect(getGlobalFormat()).toBe("1QB_TEP");
-    expect(resolveFormat(null)).toBe("1QB_TEP");
+  it("never carries a previously used format to another page", () => {
+    stubStorage("1QB_TEP"); // even a leftover value from the old behavior is ignored
+    expect(getGlobalFormat()).toBe("SUPERFLEX");
+    expect(resolveFormat(null)).toBe("SUPERFLEX");
   });
 
-  it("lets an explicit URL format win over the saved preference", () => {
+  it("lets an explicit URL format win", () => {
     stubStorage("1QB");
     expect(resolveFormat("sf-tep")).toBe("SUPERFLEX_TEP");
     expect(resolveFormat("sf")).toBe("SUPERFLEX");

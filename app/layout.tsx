@@ -8,7 +8,6 @@ import { WatchlistProvider } from "@/components/watchlist/WatchlistProvider";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { CommandPalette } from "@/components/search/CommandPalette";
 import { BackNavTracker } from "@/components/layout/BackNavTracker";
-import { AccountFormatSync } from "@/components/layout/AccountFormatSync";
 import { PageViewTracker } from "@/components/layout/PageViewTracker";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { LiveDataGuard } from "@/components/layout/LiveDataGuard";
@@ -180,7 +179,6 @@ export default async function RootLayout({
               <BackNavTracker />
               <LiveDataGuard />
               <ServiceWorkerRegister />
-              <AccountFormatSync />
               <PageViewTracker />
               <Navbar featuredClassYear={featuredClassYear} />
               {/* Bottom padding clears the fixed mobile tab bar so the
