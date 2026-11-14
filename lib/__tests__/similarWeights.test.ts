@@ -34,4 +34,16 @@ describe("findSimilarProspects weighting", () => {
     const out = findSimilarProspects(target, [b, a], { Speed: 12, Production: 12, Mock: 12 }, 2);
     expect(out[0]?.id).toBe("a");
   });
+
+  it("counts Opportunity (role multiplier x 100) among drafted players", () => {
+    const t = { ...mk("t2", "2027", [["Size", 50], ["Speed", 50], ["Draft Capital", 50]]), hasDraftData: true } as Prospect;
+    t.subScores!.push({ label: "Opportunity", text: "WR1" });
+    const mkD = (id: string, role: string) => {
+      const p = { ...mk(id, "2020", [["Size", 50], ["Speed", 50], ["Draft Capital", 50]]), hasDraftData: true } as Prospect;
+      p.subScores!.push({ label: "Opportunity", text: role });
+      return p;
+    };
+    const out = findSimilarProspects(t, [mkD("depth", "DEPTH"), mkD("wr1", "WR1")], { Size: 1, Speed: 1, "Draft Capital": 1, Opportunity: 25 }, 2);
+    expect(out[0]?.id).toBe("wr1");
+  });
 });

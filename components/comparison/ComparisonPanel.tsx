@@ -9,6 +9,7 @@ import { getGlobalFormat } from "@/lib/globalFormat";
 import { getDDScore, type LeagueFormat } from "@/lib/ddScore";
 import { applyFormatAdjustment } from "@/lib/formatAdjustment";
 import { playerHref } from "@/lib/playerLinks";
+import { opportunityValue } from "@/lib/similarProspects";
 import type { Prospect } from "@/types/prospect";
 
 export function ComparisonPanel({
@@ -54,7 +55,11 @@ export function ComparisonPanel({
   type Cell = { value?: number; text?: string };
   const cellFor = (p: Prospect, label: string): Cell => {
     const s = p.subScores?.find((x) => x.label === label && !x.isPending);
-    if (s) return { value: s.value, text: s.text && s.text !== "—" ? s.text : undefined };
+    if (s) {
+      const text = s.text && s.text !== "—" ? s.text : undefined;
+      // Opportunity is a role label; its 0-1 role multiplier decides who is ahead.
+      return { value: label === "Opportunity" ? opportunityValue(p) : s.value, text };
+    }
     if (label === "Mock" && p.mockPercentile !== undefined) return { value: p.mockPercentile };
     return {};
   };

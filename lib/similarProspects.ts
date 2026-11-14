@@ -1,6 +1,7 @@
 import type { Prospect } from "@/types/prospect";
 import { getDDScore, type LeagueFormat } from "@/lib/ddScore";
 import { applyFormatAdjustment } from "@/lib/formatAdjustment";
+import { DEFAULT_OPPORTUNITY_SCALES, normalizeOpportunityLabel, type OpportunityPosition } from "@/lib/opportunityScales";
 
 /**
  * A prospect is "resolved" once they have a Draft Capital score (a
@@ -35,7 +36,21 @@ export function isResolved(p: Prospect): boolean | undefined {
  * ever compared, so Draft Capital (drafted only) can never be matched against a
  * pre-draft prospect, while Mock can.
  */
+/** Opportunity is a role label (QB1, RB2H, ...). The sheet gives each role a
+ *  0-1 multiplier, so the role becomes a 0-100 value that can be matched like
+ *  any other score. */
+export function opportunityValue(p: Prospect): number | undefined {
+  const text = p.subScores?.find((s) => s.label === "Opportunity" && !s.isPending)?.text;
+  if (!text || text === "—") return undefined;
+  const scale = DEFAULT_OPPORTUNITY_SCALES[p.position as OpportunityPosition]?.multipliers;
+  if (!scale) return undefined;
+  const wanted = normalizeOpportunityLabel(text);
+  const hit = Object.entries(scale).find(([k]) => normalizeOpportunityLabel(k) === wanted);
+  return hit ? hit[1] * 100 : undefined;
+}
+
 function numericScore(p: Prospect, label: string): number | undefined {
+  if (label === "Opportunity") return opportunityValue(p);
   const v = p.subScores?.find((s) => s.label === label && s.value !== undefined && !s.isPending)?.value;
   if (v !== undefined) return v;
   if (label === "Mock") return p.mockPercentile;
@@ -45,6 +60,7 @@ function numericScore(p: Prospect, label: string): number | undefined {
 function comparableLabels(p: Prospect): string[] {
   const labels = (p.subScores ?? []).filter((s) => s.value !== undefined && !s.isPending).map((s) => s.label);
   if (p.mockPercentile !== undefined && !labels.includes("Mock")) labels.push("Mock");
+  if (opportunityValue(p) !== undefined) labels.push("Opportunity");
   return labels;
 }
 

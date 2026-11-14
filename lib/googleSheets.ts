@@ -840,9 +840,9 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     return undefined;
   }
 
-  function findWeight(rawColName: string): number | undefined {
+  function findWeight(rawColName: string, lo = 0, hi = rows.length): number | undefined {
     const target = norm(rawColName);
-    for (let i = 0; i < rows.length; i++) {
+    for (let i = lo; i < hi; i++) {
       const row = rows[i];
       if (!row) continue;
       for (let c = 0; c < row.length; c++) {
@@ -855,6 +855,9 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
         }
       }
     }
+    // Scoped to one position's section and nothing found there: the caller
+    // decides whether to widen the search.
+    if (lo !== 0 || hi !== rows.length) return undefined;
     // Last resort: the original fixed-column lookup, so a layout this
     // scan doesn't understand still behaves as it did before.
     for (let i = 0; i < rows.length; i++) {
@@ -892,23 +895,47 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     return [...names].slice(0, 60);
   }
 
+  // The tab is split into per-position sections headed QBS / RBS / WRS / TES in
+  // column A. Several metrics (Production, Size...) appear in more than one
+  // section, so searching the whole tab returned whichever position came first
+  // for everyone. Each position now reads only its own section.
+  const sectionStarts: { pos: "QB" | "RB" | "WR" | "TE"; row: number }[] = [];
+  for (let r = 0; r < rows.length; r++) {
+    const head = norm(rows[r]?.[0]);
+    for (const pos of ["QB", "RB", "WR", "TE"] as const) {
+      if (head === pos.toLowerCase() || head === `${pos.toLowerCase()}s`) sectionStarts.push({ pos, row: r });
+    }
+  }
+  const sectionFor = (pos: "QB" | "RB" | "WR" | "TE"): [number, number] | null => {
+    const idx = sectionStarts.findIndex((x) => x.pos === pos);
+    if (idx < 0) return null;
+    return [sectionStarts[idx]!.row, sectionStarts[idx + 1]?.row ?? rows.length];
+  };
+  const opportunityScales = await getOpportunityScales().catch(() => null);
+
   const positions = Object.keys(POSITION_METRICS) as ("QB" | "RB" | "WR" | "TE")[];
   for (const pos of positions) {
+    const section = sectionFor(pos);
+    const find = (name: string): number | undefined =>
+      // With a section found, never borrow another position's weight: a metric
+      // missing here gets the average weight at match time instead.
+      section ? findWeight(name, section[0], section[1]) : findWeight(name);
     for (const m of POSITION_METRICS[pos]) {
       // The tab sometimes names a block by its display name ("Dominator",
       // "Breakout Age") rather than the data column ("MKT", "B/O AGE"), and
       // the WR size column is synthetic and never appears in the tab at all.
-      const w = findWeight(m.col) ?? findWeight(m.label);
+      const w = find(m.col) ?? find(m.label);
       if (w !== undefined) result[pos][m.label] = w;
     }
-    const adpWeight = findWeight("ADP");
+    const adpWeight = find("ADP");
     if (adpWeight !== undefined) {
       result[pos]["Draft Capital"] = adpWeight;
       // Mock stands in for Draft Capital before a prospect has a real
       // ADP — same underlying importance, so it gets the same weight.
       result[pos]["Mock"] = adpWeight;
     }
-    const oppWeight = findWeight("OPP");
+    // Opportunity's weight is per position (QB 13, RB 17, WR 25, TE 16).
+    const oppWeight = opportunityScales?.[pos]?.opportunityWeight ?? find("OPP");
     if (oppWeight !== undefined) result[pos]["Opportunity"] = oppWeight;
   }
 
