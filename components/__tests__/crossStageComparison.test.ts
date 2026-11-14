@@ -27,8 +27,17 @@ describe("cross-stage comparison", () => {
     expect(html).toContain("75.0");
     expect(html).toContain(">Mock<");
   });
-  it("still shows scores only one side has", () => {
-    expect(html).toContain(">Draft Capital<");
-    expect(html).toContain("RB1");
+  it("never shows a score only one player has (no blank columns)", () => {
+    expect(html).not.toContain("Draft Capital");
+    expect(html).not.toContain("RB1");
+    expect(html).not.toContain("—");
+  });
+  it("shows Draft Capital and Opportunity when both are drafted", async () => {
+    const { ComparisonPanel } = await import("../comparison/ComparisonPanel");
+    const other = { ...drafted, id: "c", name: "Other Drafted", subScores: [{ label: "Size", value: 50 }, { label: "Draft Capital", value: 60 }, { label: "Opportunity", text: "RB2" }] } as unknown as Prospect;
+    const both = renderToStaticMarkup(createElement(ComparisonPanel, { current: drafted, other, format: "SUPERFLEX" }));
+    expect(both).toContain(">Draft Capital<");
+    expect(both).toContain("RB1");
+    expect(both).toContain("RB2");
   });
 });

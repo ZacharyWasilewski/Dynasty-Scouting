@@ -45,10 +45,11 @@ export function ComparisonPanel({
   const overallA = scoreAtStage(current, stage, format);
   const overallB = scoreAtStage(other, stage, format);
 
-  // Every score either player has is compared, whatever stage they are at.
-  // A drafted player's Mock value is kept off their profile (it shows Draft
-  // Capital) but is still real, so it is used here against a pre-draft
-  // prospect's Mock. A score only one side has shows "—" on the other side.
+  // Only data points BOTH players have are compared, so no column is ever
+  // blank. Drafted and pre-draft players always share their metric scores and
+  // Mock (a drafted player's Mock is kept off their profile but still exists in
+  // the data); Draft Capital and Opportunity exist only after the draft, so
+  // they appear only when both players are drafted.
   const CONTEXT_LABELS = ["Draft Capital", "Mock", "Opportunity"];
   type Cell = { value?: number; text?: string };
   const cellFor = (p: Prospect, label: string): Cell => {
@@ -58,6 +59,7 @@ export function ComparisonPanel({
     return {};
   };
   const hasCell = (c: Cell) => c.value !== undefined || c.text !== undefined;
+  const hasNumber = (v: number | undefined) => v !== undefined && Number.isFinite(v);
   const metricLabels = [...(current.subScores ?? []), ...(other.subScores ?? [])]
     .map((s) => s.label)
     .filter((l, i, all) => !CONTEXT_LABELS.includes(l) && all.indexOf(l) === i);
@@ -71,9 +73,9 @@ export function ComparisonPanel({
     },
     ...[...metricLabels, ...CONTEXT_LABELS]
       .map((label) => ({ label, ca: cellFor(current, label), cb: cellFor(other, label) }))
-      .filter((r) => hasCell(r.ca) || hasCell(r.cb))
+      .filter((r) => hasCell(r.ca) && hasCell(r.cb))
       .map((r) => ({ label: r.label, a: r.ca.value, b: r.cb.value, aText: r.ca.text, bText: r.cb.text })),
-  ];
+  ].filter((r) => (r.aText !== undefined || hasNumber(r.a)) && (r.bText !== undefined || hasNumber(r.b)));
 
   return (
     <div>
