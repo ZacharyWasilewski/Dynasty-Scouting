@@ -783,6 +783,11 @@ function applySubScores(prospects: Prospect[], rawData: Map<string, RawTabData>)
  * lookup is by raw sheet column name (e.g. "BMI"), not the display
  * label, since that's what's actually written in the tab.
  */
+const WEIGHT_TAB_ALIASES: Partial<Record<"QB" | "RB" | "WR" | "TE", Record<string, string[]>>> = {
+  QB: { Production: ["Pass YPG"], Rushing: ["Rush YPG"] },
+  WR: { "Breakout Age": ["B/O"], Size: ["H/W"], Dominator: ["MKT", "DOM", "Dom", "Dominator %"] },
+};
+
 async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE", Record<string, number>>> {
   const result: Record<"QB" | "RB" | "WR" | "TE", Record<string, number>> = { QB: {}, RB: {}, WR: {}, TE: {} };
   const rows = await fetchNamedTabRows("Weight Scales");
@@ -875,6 +880,23 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     return undefined;
   }
 
+  /** Diagnostics: where a cell matching the pattern sits and what is under it. */
+  function describeCellsMatching(re: RegExp): string[] {
+    const out: string[] = [];
+    for (let i = 0; i < rows.length && out.length < 12; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      for (let c = 0; c < row.length && out.length < 12; c++) {
+        const v = row[c]?.trim();
+        if (v && v.length < 30 && re.test(v)) {
+          const below = [1, 2, 3, 4].map((d) => rows[i + d]?.[c]?.trim() ?? "");
+          out.push(`r${i + 1}c${c + 1} "${v}" below=${JSON.stringify(below)}`);
+        }
+      }
+    }
+    return out;
+  }
+
   /** Names of every block on the tab that has its own Weights row, for diagnostics. */
   function listWeightBlocks(): string[] {
     const names = new Set<string>();
@@ -924,7 +946,11 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
       // The tab sometimes names a block by its display name ("Dominator",
       // "Breakout Age") rather than the data column ("MKT", "B/O AGE"), and
       // the WR size column is synthetic and never appears in the tab at all.
-      const w = find(m.col) ?? find(m.label);
+      // The tab's own block names (read from production logs): the QB
+      // metrics are "Pass YPG" / "Rush YPG", Breakout Age is "B/O" and WR Size
+      // is "H/W" (height/weight, which is what the synthetic size column is).
+      const aliases = WEIGHT_TAB_ALIASES[pos]?.[m.label] ?? [];
+      const w = [m.col, m.label, ...aliases].reduce<number | undefined>((found, name) => found ?? find(name), undefined);
       if (w !== undefined) result[pos][m.label] = w;
     }
     const adpWeight = find("ADP");
@@ -949,7 +975,8 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     if (found < expected) {
       const message = `${pos}: resolved ${found}/${expected} category weights from Weight Scales — comparisons and Positional Score for this position may be using default weighting for the rest.`;
       const missing = POSITION_METRICS[pos].filter((m) => result[pos][m.label] === undefined).map((m) => `${m.label} (looked for "${m.col}" / "${m.label}")`);
-      console.error(`[subscore-weights] ${message} Found: ${JSON.stringify(result[pos])} Missing: ${JSON.stringify(missing)} Weight blocks on the tab: ${JSON.stringify(listWeightBlocks())}`);
+      const nearby = missing.length === 0 ? [] : describeCellsMatching(/dom|mkt|market/i);
+      console.error(`[subscore-weights] ${message} Cells resembling the missing names: ${JSON.stringify(nearby)}. Found: ${JSON.stringify(result[pos])} Missing: ${JSON.stringify(missing)} Weight blocks on the tab: ${JSON.stringify(listWeightBlocks())}`);
       reportHealthEvent(`[Sub-Score Weights] ${message}`);
     }
   }
