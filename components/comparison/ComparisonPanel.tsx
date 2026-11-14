@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { scoreAtStage, sharedScoreStage, SCORE_STAGE_LABELS } from "@/lib/scoreStage";
 import { cn } from "@/lib/utils";
-import { isResolved } from "@/lib/similarProspects";
 import { SchoolLogo } from "@/components/ui/SchoolLogo";
 import { getGlobalFormat } from "@/lib/globalFormat";
 import { getDDScore, type LeagueFormat } from "@/lib/ddScore";
@@ -41,15 +40,27 @@ export function ComparisonPanel({
   }, [formatOverride]);
   const format = formatOverride ?? syncedFormat;
 
-  const currentResolved = isResolved(current);
-  const crossRegime = currentResolved !== isResolved(other);
-  const REGIME_SPECIFIC_LABELS = new Set(["Draft Capital", "Opportunity", "Mock"]);
-
   const stage = sharedScoreStage(current, other);
   const overallLabel = SCORE_STAGE_LABELS[stage];
   const overallA = scoreAtStage(current, stage, format);
   const overallB = scoreAtStage(other, stage, format);
 
+  // Every score either player has is compared, whatever stage they are at.
+  // A drafted player's Mock value is kept off their profile (it shows Draft
+  // Capital) but is still real, so it is used here against a pre-draft
+  // prospect's Mock. A score only one side has shows "—" on the other side.
+  const CONTEXT_LABELS = ["Draft Capital", "Mock", "Opportunity"];
+  type Cell = { value?: number; text?: string };
+  const cellFor = (p: Prospect, label: string): Cell => {
+    const s = p.subScores?.find((x) => x.label === label && !x.isPending);
+    if (s) return { value: s.value, text: s.text && s.text !== "—" ? s.text : undefined };
+    if (label === "Mock" && p.mockPercentile !== undefined) return { value: p.mockPercentile };
+    return {};
+  };
+  const hasCell = (c: Cell) => c.value !== undefined || c.text !== undefined;
+  const metricLabels = [...(current.subScores ?? []), ...(other.subScores ?? [])]
+    .map((s) => s.label)
+    .filter((l, i, all) => !CONTEXT_LABELS.includes(l) && all.indexOf(l) === i);
   const rows = [
     {
       label: overallLabel,
@@ -58,18 +69,10 @@ export function ComparisonPanel({
       aText: undefined as string | undefined,
       bText: undefined as string | undefined,
     },
-    ...(current.subScores ?? [])
-      .filter((s) => !crossRegime || !REGIME_SPECIFIC_LABELS.has(s.label))
-      .map((s) => {
-        const match = other.subScores?.find((o) => o.label === s.label);
-        return {
-          label: s.label,
-          a: s.value,
-          b: match?.value,
-          aText: s.text,
-          bText: match?.text,
-        };
-      }),
+    ...[...metricLabels, ...CONTEXT_LABELS]
+      .map((label) => ({ label, ca: cellFor(current, label), cb: cellFor(other, label) }))
+      .filter((r) => hasCell(r.ca) || hasCell(r.cb))
+      .map((r) => ({ label: r.label, a: r.ca.value, b: r.cb.value, aText: r.ca.text, bText: r.cb.text })),
   ];
 
   return (

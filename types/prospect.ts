@@ -167,6 +167,11 @@ export interface Prospect {
    * [Production, Rushing, Draft Capital, Opportunity].
    */
   subScores?: SubScore[];
+  /** Mock-draft percentile for a drafted player. Their profile shows Draft
+   *  Capital instead, but the Mock value still exists and is used when they are
+   *  compared with a pre-draft prospect. Not part of subScores, so profile
+   *  rings and similarity weights are unchanged. */
+  mockPercentile?: number;
   draftProjection?: DraftProjection;
   projectedRound?: DraftRound;
   summary?: string;

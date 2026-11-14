@@ -766,6 +766,10 @@ function applySubScores(prospects: Prospect[], rawData: Map<string, RawTabData>)
       scores.push({ label: "Mock", value: percentileOf(raw.mock, allMockValues, true) });
       scores.push({ label: "Opportunity", text: "—", isPending: true });
     }
+    // Drafted players keep their mock value for cross-stage comparisons.
+    if (raw.adp !== undefined && raw.opp !== undefined && raw.mock !== undefined && p.draftClass !== "2028") {
+      p.mockPercentile = percentileOf(raw.mock, allMockValues, true);
+    }
     if (scores.length > 0) p.subScores = scores;
   }
 }
