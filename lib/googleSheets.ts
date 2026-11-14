@@ -968,8 +968,8 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
       // ADP — same underlying importance, so it gets the same weight.
       result[pos]["Mock"] = adpWeight;
     }
-    // Opportunity's weight is per position (QB 13, RB 17, WR 25, TE 16).
-    const oppWeight = opportunityScales?.[pos]?.opportunityWeight ?? find("OPP");
+    // Opportunity's weight is per position and read from its own OPP block.
+    const oppWeight = find("OPP") ?? opportunityScales?.[pos]?.opportunityWeight;
     if (oppWeight !== undefined) result[pos]["Opportunity"] = oppWeight;
   }
 
