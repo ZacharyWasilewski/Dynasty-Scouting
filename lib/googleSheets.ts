@@ -965,6 +965,11 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     if (oppWeight !== undefined) result[pos]["Opportunity"] = oppWeight;
   }
 
+  for (const pos of positions) {
+    const total = Object.values(result[pos]).reduce((sum, w) => sum + w, 0) - (result[pos]["Mock"] ?? 0);
+    console.log(`[subscore-weights] ${pos} weights (Mock shares Draft Capital's): ${JSON.stringify(result[pos])} total excluding Mock = ${total}`);
+  }
+
   // A silently-empty weight map is the difference between comparisons
   // ranked by real model importance and comparisons where every metric
   // counts the same, so make the failure visible instead of letting it
