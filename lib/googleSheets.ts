@@ -785,7 +785,8 @@ function applySubScores(prospects: Prospect[], rawData: Map<string, RawTabData>)
  */
 const WEIGHT_TAB_ALIASES: Partial<Record<"QB" | "RB" | "WR" | "TE", Record<string, string[]>>> = {
   QB: { Production: ["Pass YPG"], Rushing: ["Rush YPG"] },
-  WR: { "Breakout Age": ["B/O"], Size: ["H/W"], Dominator: ["MKT", "DOM", "Dom", "Dominator %"] },
+  RB: { Size: ["RBS BMI"] },
+  WR: { "Breakout Age": ["B/O"], Size: ["H/W"], Dominator: ["MKT SHARE", "MKT", "Dominator"] },
 };
 
 async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE", Record<string, number>>> {
@@ -860,12 +861,10 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
         }
       }
     }
-    // Scoped to one position's section and nothing found there: the caller
-    // decides whether to widen the search.
-    if (lo !== 0 || hi !== rows.length) return undefined;
+
     // Last resort: the original fixed-column lookup, so a layout this
     // scan doesn't understand still behaves as it did before.
-    for (let i = 0; i < rows.length; i++) {
+    for (let i = lo; i < hi; i++) {
       const row = rows[i];
       if (!row) continue;
       if (norm(row[LABEL_COL_1]) === target) {
@@ -925,7 +924,7 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
   for (let r = 0; r < rows.length; r++) {
     const head = norm(rows[r]?.[0]);
     for (const pos of ["QB", "RB", "WR", "TE"] as const) {
-      if (head === pos.toLowerCase() || head === `${pos.toLowerCase()}s`) sectionStarts.push({ pos, row: r });
+      if (head === pos.toLowerCase() || head === `${pos.toLowerCase()}s` || head.startsWith(`${pos.toLowerCase()}s`) && rows[r]?.[0]?.trim().toUpperCase().startsWith(`${pos}S `)) sectionStarts.push({ pos, row: r });
     }
   }
   const sectionFor = (pos: "QB" | "RB" | "WR" | "TE"): [number, number] | null => {
@@ -965,6 +964,29 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     if (oppWeight !== undefined) result[pos]["Opportunity"] = oppWeight;
   }
 
+  // Every weighted block in each position's section, so the weights the site
+  // uses can be checked against the full model (blocks that are not profile
+  // sub-scores still carry points in the sheet's score).
+  for (const pos of positions) {
+    const section = sectionFor(pos);
+    if (!section) continue;
+    const blocks: Record<string, number> = {};
+    for (let i = section[0]; i < section[1]; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const name = row[c]?.trim();
+        if (!name || name.length > 24) continue;
+        for (let k = i + 1; k < Math.min(i + 6, rows.length); k++) {
+          if (norm(rows[k]?.[c]) !== "weights") continue;
+          const w = weightFromRow(rows[k], c);
+          if (w !== undefined) blocks[name] = w;
+          break;
+        }
+      }
+    }
+    console.log(`[subscore-weights] ${pos} section rows ${section[0] + 1}-${section[1]} blocks with weights: ${JSON.stringify(blocks)} sum=${Object.values(blocks).reduce((a, b) => a + b, 0)}`);
+  }
   for (const pos of positions) {
     const total = Object.values(result[pos]).reduce((sum, w) => sum + w, 0) - (result[pos]["Mock"] ?? 0);
     console.log(`[subscore-weights] ${pos} weights (Mock shares Draft Capital's): ${JSON.stringify(result[pos])} total excluding Mock = ${total}`);
