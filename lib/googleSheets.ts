@@ -872,10 +872,33 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     return undefined;
   }
 
+  /** Names of every block on the tab that has its own Weights row, for diagnostics. */
+  function listWeightBlocks(): string[] {
+    const names = new Set<string>();
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        const name = row[c]?.trim();
+        if (!name) continue;
+        for (let k = i + 1; k < Math.min(i + 6, rows.length); k++) {
+          if (norm(rows[k]?.[c]) === "weights") {
+            names.add(name);
+            break;
+          }
+        }
+      }
+    }
+    return [...names].slice(0, 60);
+  }
+
   const positions = Object.keys(POSITION_METRICS) as ("QB" | "RB" | "WR" | "TE")[];
   for (const pos of positions) {
     for (const m of POSITION_METRICS[pos]) {
-      const w = findWeight(m.col);
+      // The tab sometimes names a block by its display name ("Dominator",
+      // "Breakout Age") rather than the data column ("MKT", "B/O AGE"), and
+      // the WR size column is synthetic and never appears in the tab at all.
+      const w = findWeight(m.col) ?? findWeight(m.label);
       if (w !== undefined) result[pos][m.label] = w;
     }
     const adpWeight = findWeight("ADP");
@@ -898,7 +921,8 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
     const expected = POSITION_METRICS[pos].length + 2; // + Draft Capital/Mock + Opportunity
     if (found < expected) {
       const message = `${pos}: resolved ${found}/${expected} category weights from Weight Scales — comparisons and Positional Score for this position may be using default weighting for the rest.`;
-      console.error(`[subscore-weights] ${message} Found: ${JSON.stringify(result[pos])}`);
+      const missing = POSITION_METRICS[pos].filter((m) => result[pos][m.label] === undefined).map((m) => `${m.label} (looked for "${m.col}" / "${m.label}")`);
+      console.error(`[subscore-weights] ${message} Found: ${JSON.stringify(result[pos])} Missing: ${JSON.stringify(missing)} Weight blocks on the tab: ${JSON.stringify(listWeightBlocks())}`);
       reportHealthEvent(`[Sub-Score Weights] ${message}`);
     }
   }

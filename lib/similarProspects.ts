@@ -28,10 +28,36 @@ export function isResolved(p: Prospect): boolean | undefined {
   return undefined;
 }
 
-/** Sub-scores that only exist in one regime — not shared between a
- *  resolved prospect and a still-projecting one, so they're excluded
- *  whenever the comparison crosses regimes. */
-const REGIME_SPECIFIC_LABELS = new Set(["Draft Capital", "Opportunity", "Mock"]);
+/**
+ * Numeric score for a label, from the profile's own sub-scores first. A drafted
+ * player's Mock percentile is kept off their profile (it shows Draft Capital),
+ * but it is real data, so it stands in here. Only values both players have are
+ * ever compared, so Draft Capital (drafted only) can never be matched against a
+ * pre-draft prospect, while Mock can.
+ */
+function numericScore(p: Prospect, label: string): number | undefined {
+  const v = p.subScores?.find((s) => s.label === label && s.value !== undefined && !s.isPending)?.value;
+  if (v !== undefined) return v;
+  if (label === "Mock") return p.mockPercentile;
+  return undefined;
+}
+
+function comparableLabels(p: Prospect): string[] {
+  const labels = (p.subScores ?? []).filter((s) => s.value !== undefined && !s.isPending).map((s) => s.label);
+  if (p.mockPercentile !== undefined && !labels.includes("Mock")) labels.push("Mock");
+  return labels;
+}
+
+/**
+ * Weight for a label. A label the sheet gave no weight for gets the AVERAGE of
+ * the weights that were found, not 1: the sheet's weights run from single
+ * digits to the high teens, so a flat 1 would make an unweighted metric count
+ * for a fraction of everything else and quietly drop out of the match.
+ */
+function weightFor(weights: Record<string, number>, label: string, fallback: number): number {
+  const w = weights[label];
+  return typeof w === "number" && Number.isFinite(w) && w > 0 ? w : fallback;
+}
 
 /** How much of the final distance the overall grade accounts for, with
  *  the rest coming from the weighted metric profile. Fixed rather than
@@ -91,21 +117,24 @@ export function findSimilarProspects(
   // How many of this prospect's own metrics could ever be matched, so
   // the minimum-overlap rule adapts to a sparse profile instead of
   // excluding everyone.
-  const comparableCount = prospect.subScores!.filter((s) => s.value !== undefined).length;
+  const prospectLabels = comparableLabels(prospect);
+  const comparableCount = prospectLabels.length;
+  const known = Object.values(weights).filter((w) => typeof w === "number" && Number.isFinite(w) && w > 0);
+  const fallbackWeight = known.length > 0 ? known.reduce((a, b) => a + b, 0) / known.length : 1;
 
   const withDistance = candidates.map((p) => {
-    const crossRegime = prospectResolved !== isResolved(p);
-
     let weightedDistanceSq = 0;
     let totalWeight = 0;
     let sharedCount = 0;
-    for (const s of prospect.subScores!) {
-      if (crossRegime && REGIME_SPECIFIC_LABELS.has(s.label)) continue; // not a shared metric
-      if (s.value === undefined) continue; // text-based score (e.g. Opportunity) — not comparable numerically
-      const other = p.subScores!.find((o) => o.label === s.label)?.value;
-      if (other === undefined) continue;
-      const w = weights[s.label] ?? 1;
-      const diff = s.value - other;
+    for (const label of prospectLabels) {
+      const mine = numericScore(prospect, label);
+      const other = numericScore(p, label);
+      if (mine === undefined || other === undefined) continue; // only shared data points count
+      // Both drafted: Draft Capital is the real measure; Mock would count the
+      // same draft signal twice.
+      if (label === "Mock" && numericScore(prospect, "Draft Capital") !== undefined && numericScore(p, "Draft Capital") !== undefined) continue;
+      const w = weightFor(weights, label, fallbackWeight);
+      const diff = mine - other;
       weightedDistanceSq += w * diff * diff;
       totalWeight += w;
       sharedCount++;
