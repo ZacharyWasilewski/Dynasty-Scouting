@@ -971,7 +971,8 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
   // degrade quietly.
   for (const pos of positions) {
     const found = Object.keys(result[pos]).length;
-    const expected = POSITION_METRICS[pos].length + 2; // + Draft Capital/Mock + Opportunity
+    // Every metric plus Draft Capital, Mock and Opportunity.
+    const expected = POSITION_METRICS[pos].length + 3;
     if (found < expected) {
       const message = `${pos}: resolved ${found}/${expected} category weights from Weight Scales — comparisons and Positional Score for this position may be using default weighting for the rest.`;
       const missing = POSITION_METRICS[pos].filter((m) => result[pos][m.label] === undefined).map((m) => `${m.label} (looked for "${m.col}" / "${m.label}")`);
