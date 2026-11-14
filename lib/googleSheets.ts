@@ -921,11 +921,20 @@ async function fetchSubScoreWeights(): Promise<Record<"QB" | "RB" | "WR" | "TE",
   // section, so searching the whole tab returned whichever position came first
   // for everyone. Each position now reads only its own section.
   const sectionStarts: { pos: "QB" | "RB" | "WR" | "TE"; row: number }[] = [];
+  // The heading ("QBS", "RBS BMI", ...) is not always in column A, so every
+  // cell of a row is checked.
   for (let r = 0; r < rows.length; r++) {
-    const head = norm(rows[r]?.[0]);
-    for (const pos of ["QB", "RB", "WR", "TE"] as const) {
-      if (head === pos.toLowerCase() || head === `${pos.toLowerCase()}s` || head.startsWith(`${pos.toLowerCase()}s`) && rows[r]?.[0]?.trim().toUpperCase().startsWith(`${pos}S `)) sectionStarts.push({ pos, row: r });
+    const row = rows[r];
+    if (!row) continue;
+    let matched: "QB" | "RB" | "WR" | "TE" | null = null;
+    for (const cell of row) {
+      const t = cell?.trim().toUpperCase() ?? "";
+      if (!t) continue;
+      for (const pos of ["QB", "RB", "WR", "TE"] as const) {
+        if (t === pos || t === `${pos}S` || t.startsWith(`${pos}S `)) matched = pos;
+      }
     }
+    if (matched && !sectionStarts.some((x) => x.row === r)) sectionStarts.push({ pos: matched, row: r });
   }
   const sectionFor = (pos: "QB" | "RB" | "WR" | "TE"): [number, number] | null => {
     const idx = sectionStarts.findIndex((x) => x.pos === pos);
